@@ -1,6 +1,7 @@
 package littleGS;
 
 import io.netty.bootstrap.Bootstrap;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -14,8 +15,8 @@ public class App
     {
         Bootstrap bootstrap = new Bootstrap();
         Logger logger = LogManager.getLogger();
+        System.out.println(logger.isInfoEnabled());
         logger.info("some thing");
-        logger.fatal("eng??");
         System.out.println( "Hello World!" );
     }
 }
