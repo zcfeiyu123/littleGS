@@ -10,6 +10,7 @@ package domain.manager;
 
 import domain.entity.User;
 import utils.SimpleLogger;
+import utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,12 +26,18 @@ public class UserManager {
     private HashMap<String, User> userMap = null;
     private HashMap<String, User> aliveUserMap = null;
     private HashMap<String, User> deadUserMap = null;
-    //TODO
-    private HashMap<String, User> locationToUserMap = null; //not really settle down
+    //TODO location to user map should be a position to multi user, the design below MUST be revised!!!!!
+    private HashMap<double[], User> locationUserMap = null;
+    private HashMap<User, double[]> userLocationMap = null;
 
     private UserManager(){
-        userMap = new HashMap<String, User>();
-        locationToUserMap = new HashMap<String, User>();
+        this.userMap = new HashMap<String, User>();
+        this.aliveUserMap = new HashMap<String, User>();
+        this.deadUserMap = new HashMap<String, User>();
+
+        //location related information
+        locationUserMap = new HashMap<double[], User>();
+        userLocationMap = new HashMap<User, double[]>();
     }
 
     public static UserManager getInstance()
@@ -60,6 +67,31 @@ public class UserManager {
         this.aliveUserMap.put(user.getName(), user);
     }
 
+    public void refreshUserStatus(User user)
+    {
+        //new position
+        if(userLocationMap.containsKey(user))
+        {
+            double[] position = userLocationMap.get(user);
+            if(locationUserMap.containsKey(position))
+            {
+                locationUserMap.remove(position);
+            }
+            position[0] = user.getLongitude();
+            position[1] = user.getLatitude();
+            userLocationMap.put(user, position);
+            locationUserMap.put(position, user);
+        }
+        else
+        {
+            double[] position = new double[2];
+            position[0] = user.getLongitude();
+            position[1] = user.getLatitude();
+            userLocationMap.put(user, position);
+            locationUserMap.put(position,user);
+        }
+    }
+
     /**
      * create a user instance
      * @param userName
@@ -79,6 +111,7 @@ public class UserManager {
         User user = User.getInstance(userName);
         registerUser(user);
         registerAliveUser(user);
+        SimpleLogger.getLogger().debug("creating user " + userName + " succeed");
         return user;
     }
 
@@ -106,21 +139,70 @@ public class UserManager {
     public ArrayList<User> getTargetUsers(String usersInString)
     {
         ArrayList<User> targetUsers = new ArrayList<User>();
-        String[] userStr = usersInString.split(",");
-        for(int i = 0, len = userStr.length; i < len; i++)
-        {
-            if(aliveUserMap.containsKey(userStr[i]))
-            {
-                targetUsers.add(aliveUserMap.get(userStr[i]));
-            }
-        }
+
 
         return targetUsers;
     }
 
-    public ArrayList<User> getTargetUsers(double longitude, long latitude, double range)
+    public ArrayList<User> getTargetUsers(double longitude, double latitude, double range)
     {
-        //TODO
-        return null;
+        return getUsersAround(longitude, latitude, range, 50);
+    }
+
+    public String getNearbyUsers(double longitude, double latitude, double range)
+    {
+        ArrayList<User> userArrayList = getUsersAround(longitude, latitude, range, 50);
+        if(userArrayList != null)
+        {
+            return this.userListToTripleTupleString(userArrayList);
+        }
+        return "";
+    }
+
+    private ArrayList<User> getUsersAround(double longitude, double latitude, double range, int numLimit)
+    {
+        double[] position = new double[2];
+        position[0] = longitude;
+        position[1] = latitude;
+        //TODO get users nearby using given longitude and latitude
+        ArrayList<User> userArrayList = new ArrayList<User>();
+        User user = User.getInstance("1234");
+        userArrayList.add(user);
+        return userArrayList;
+    }
+
+    private ArrayList<User> userStringToArrayList(String userString)
+    {
+        ArrayList<User> userArrayList = new ArrayList<User>();
+        String[] userNames = StringUtils.splitStr(userString, ',');
+        for(int i = 0, len = userNames.length; i < len; i++)
+        {
+            if(aliveUserMap.containsKey(userNames[i]))
+            {
+                userArrayList.add(aliveUserMap.get(userNames[i]));
+            }
+        }
+
+        return userArrayList;
+    }
+
+    private String userListToString(ArrayList<User> userArrayList)
+    {
+        StringBuilder userNamesBuilder = new StringBuilder();
+        for(int i = 0, len = userArrayList.size(); i < len; i++)
+        {
+            userNamesBuilder.append(userArrayList.get(i).getName()).append(",");
+        }
+        return userNamesBuilder.deleteCharAt(userNamesBuilder.length() - 1).toString();
+    }
+
+    private String userListToTripleTupleString(ArrayList<User> userArrayList)
+    {
+        StringBuilder userTripeTupleBuilder = new StringBuilder();
+        for(int i = 0, len = userArrayList.size(); i < len; i++)
+        {
+            userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append(",");
+        }
+        return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
     }
 }

@@ -23,6 +23,12 @@ public class User {
     private HashMap<Integer, Integer> weaponInventoryMap = null;
 
     /**
+     * position infomation
+     */
+    private double longitude = 0;
+    private double latitude = 0;
+
+    /**
      * six basic attributes
      */
     private double atr1 = 0;
@@ -34,7 +40,7 @@ public class User {
 
     private User(String name)
     {
-        this.name = null;
+        this.name = name;
         this.HP = 5;//TODO
         this.eventMessageArrayList = new ArrayList<EventMessage>();
         this.weaponHashMap = new HashMap<Integer, Weapon>();
@@ -46,10 +52,21 @@ public class User {
         return new User(name);
     }
 
-    public void refresh()
+    /**
+     *
+     * @return
+     */
+    public String refresh(double longitude, double latitude)
     {
-        System.out.println("in fresh");
-            //TODO finish refresh
+        //set new position information
+        this.setLatitude(latitude);
+        this.setLongitude(longitude);
+
+        //register this information in UserManager
+        UserManager.getInstance().refreshUserStatus(this);
+        //TODO to be finished
+        String nearbyUserNames = UserManager.getInstance().getNearbyUsers(longitude, latitude, 0);
+        return nearbyUserNames;
     }
 
     /*-------------------------weapon related----------------------*/
@@ -158,5 +175,40 @@ public class User {
     public boolean isUserDead()
     {
         return HP > 0;
+    }
+
+    public double getLongitude()
+    {
+        return this.longitude;
+    }
+
+    private void setLongitude(double longitude)
+    {
+        this.longitude = longitude;
+    }
+
+    public double getLatitude()
+    {
+        return this.latitude;
+    }
+
+    private void setLatitude(double latitude)
+    {
+        this.latitude = latitude;
+    }
+
+    /**
+     * turn this user to a triple tuple String
+     * @return
+     */
+    public String toTripleTupleString()
+    {
+        StringBuilder sbd = new StringBuilder();
+        sbd.append("user").append(":");
+        sbd.append(name).append("\t");
+        sbd.append(longitude).append("\t");
+        sbd.append(latitude);
+
+        return sbd.toString();
     }
 }

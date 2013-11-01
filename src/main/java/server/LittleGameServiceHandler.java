@@ -1,5 +1,7 @@
 package server;
 
+import domain.entity.User;
+import domain.manager.UserManager;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,7 +28,13 @@ import java.util.Map;
  * To change this template use File | Settings | File Templates.
  */
 public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
-    private final String userUpdate = "userupdate";
+
+    /**
+     * operation types
+     */
+    private final String refresh = "refresh";
+    private final String getWeapon = "getWeapon";
+    private final String useWeapon = "useWeapon";
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -44,25 +52,74 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
                 SimpleLogger.getLogger().debug("in debug model, path = " + path);
             }
             //process
-            if(path.equals(userUpdate))
+            if(path.equals(refresh))
             {
-                this.userUpdateProcess(ctx, queryStringDecoder, req);
+                //deal with refresh operation
+                this.refreshOperation(ctx, queryStringDecoder, req);
+            }
+            else if(path.equals(getWeapon))
+            {
+                //deal with getWeapon Operation
+                this.getWeaponOperation(ctx, queryStringDecoder, req);
+            }
+            else if(path.equals(useWeapon))
+            {
+                //deal with useWeapon Operation, which is the most complex
+                this.useWeaponOperation(ctx, queryStringDecoder, req);
             }
             else
             {
-                this.defaultProcess(ctx, req, path);
+                this.unrecognizedOperation(ctx, req, path);
             }
 
         }
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        cause.printStackTrace();
+        ctx.close();
+    }
+
+    /*-----------------------------------------user operation -----------------------------------------------*/
+
     /**
-     * deal with price
+     * refresh operation for user
      * @param ctx
      * @param queryStringDecoder
      * @param req
      */
-    private void userUpdateProcess(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void refreshOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    {
+        //store all the parameters in a map
+        Map<String, List<String>> params = queryStringDecoder.parameters();
+        double longitude;
+        double latitude;
+        //params detected
+        try{
+            longitude = Double.parseDouble(getParameter("longitude", params));
+            latitude = Double.parseDouble(getParameter("latitude", params));
+        }catch(Exception e)
+        {
+            this.writeResponse(ctx, req, "{status:fail,reason:parameter is wrong}");
+            return ;
+        }
+        String userName = getParameter("userName", params);
+
+        UserManager.getInstance().createUser(userName);//TODO to be deleted, test only
+        User user = UserManager.getInstance().getExistUser(userName);
+
+        if(user == null)
+        {
+            this.writeResponse(ctx, req, "{status:fail,reason:no user exists}");
+            return ;
+        }
+
+        String response = user.refresh(longitude, latitude);
+        this.writeResponse(ctx, req, response);
+    }
+
+    private void getWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
@@ -78,17 +135,34 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         this.writeResponse(ctx, req, response);
     }
 
-    private void defaultProcess(ChannelHandlerContext ctx, HttpRequest req, String path)
+    private void useWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    {
+        //store all the parameters in a map
+        Map<String, List<String>> params = queryStringDecoder.parameters();
+        //params detected
+        String type = getParameter("type", params);
+        if(type == null || type.length() < 1)
+        {
+            this.writeResponse(ctx, req, "{fail:type is null}");
+            return;
+        }
+
+        String response = "{success: type = " + type +"}";
+        this.writeResponse(ctx, req, response);
+    }
+
+    private void unrecognizedOperation(ChannelHandlerContext ctx, HttpRequest req, String path)
     {
         writeResponse(ctx, req, "{success:fail,reason:unrecognized path as " + path + "}");
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
-    }
-
+    /*-----------------------------------------basic operation ----------------------------------------------*/
+    /**
+     * get parameters from url path
+     * @param key parameter name
+     * @param params
+     * @return
+     */
     public String getParameter(String key,  Map<String, List<String>> params) {
         List<String> vals = params.get(key);
         if(vals == null) {
@@ -113,6 +187,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         return retStr;
     }
 
+    /**
+     * write response back to client
+     * @param ctx
+     * @param req
+     * @param resultStr
+     */
     private void writeResponse(ChannelHandlerContext ctx, HttpRequest req, String resultStr)
     {
         if (is100ContinueExpected(req)) {
