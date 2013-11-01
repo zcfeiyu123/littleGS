@@ -1,5 +1,7 @@
 package domain.entity;
 
+import domain.manager.UserManager;
+
 import java.util.ArrayList;
 
 /**
@@ -11,8 +13,6 @@ import java.util.ArrayList;
  */
 public class Weapon extends Item {
 
-    private int weaponID = -1;//weapon id
-    private String weaponName = null;//weapon name
     private int weaponType = 0;//the type of the weapon
     private int power = 0;//how much damage can this weapon cause
     private int range = 0;//fire range of this weapon
@@ -33,7 +33,15 @@ public class Weapon extends Item {
             EventMessage eventMessage = fireToOneUser(user, targetUser);
             if(eventMessage != null)//succeed in firing
             {
-                targetUser.registerEvents(eventMessage);//register events to this particular user
+
+                targetUser.calcDamage(power);
+                targetUser.registerEvents(eventMessage);  //register events to this particular user
+
+                if(targetUser.isUserDead())
+                {
+                    UserManager.getInstance().processDeadUser(targetUser);
+                }
+
                 targetUserNames.append(targetUser.getName()).append(",");
                 totalDamage += power;
             }
@@ -41,13 +49,13 @@ public class Weapon extends Item {
 
         //register events to main user
         targetUserNames.deleteCharAt(targetUserNames.length() - 1);
-        EventMessage mainEvent = EventMessage.getInstance(user.getName(), targetUserNames.toString(), weaponName, totalDamage);
+        EventMessage mainEvent = EventMessage.getInstance(user.getName(), targetUserNames.toString(), this.getName(), totalDamage);
         user.registerEvents(mainEvent);
     }
 
     private EventMessage fireToOneUser(User user, User targetUser)
     {
-        EventMessage eventMessage = EventMessage.getInstance(user.getName(), targetUser.getName(), weaponName, power);
+        EventMessage eventMessage = EventMessage.getInstance(user.getName(), targetUser.getName(), this.getName(), power);
         return eventMessage;
     }
 
