@@ -41,7 +41,7 @@ public class User {
     private User(String name)
     {
         this.name = name;
-        this.HP = 5;//TODO
+        this.HP = 5;//TODO we must give each user her corresponding hp
         this.eventMessageArrayList = new ArrayList<EventMessage>();
         this.weaponHashMap = new HashMap<Integer, Weapon>();
         this.weaponInventoryMap = new HashMap<Integer, Integer>();
@@ -66,7 +66,8 @@ public class User {
         UserManager.getInstance().refreshUserStatus(this);
         //TODO to be finished
         String nearbyUserNames = UserManager.getInstance().getNearbyUsers(longitude, latitude, 0);
-        return nearbyUserNames;
+        String response = "{status:success," + nearbyUserNames + "}";
+        return response;
     }
 
     /*-------------------------weapon related----------------------*/

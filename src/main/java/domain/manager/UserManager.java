@@ -97,25 +97,25 @@ public class UserManager {
      * @param userName
      * @return
      */
-    public User createUser(String userName)
+    public String createUser(String userName)
     {
         if(userName == null)
         {
-            SimpleLogger.getLogger().error("User ID is null while creating user");
-            return null;
+            SimpleLogger.getLogger().fatal("userName is null while creating user");
+            return "{status:fail, reason:userName is null while creating user}";
         }
         if(userMap.containsKey(userName))
         {
-            return userMap.get(userName);
+            return "{status:success, result:user already exist}";
         }
         User user = User.getInstance(userName);
         registerUser(user);
         registerAliveUser(user);
         SimpleLogger.getLogger().debug("creating user " + userName + " succeed");
-        return user;
+        return "{status:success, result:user creation succeed}";
     }
 
-    public User getExistUser(String userName)
+    private User getExistUser(String userName)
     {
         return userMap.containsKey(userName) ? userMap.get(userName) : null;
     }
@@ -204,5 +204,16 @@ public class UserManager {
             userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append(",");
         }
         return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
+    }
+
+    /*----------------------------------user operation proxy parts-----------------------------------------------*/
+    public String refresh(String userName, double longitude, double latitude)
+    {
+        User user = getExistUser(userName);
+        if(user == null)
+        {
+            return "{status:fail,reason:user " + userName + " does not exist}";
+        }
+        return user.refresh(longitude, latitude);
     }
 }

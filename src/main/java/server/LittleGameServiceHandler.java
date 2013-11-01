@@ -1,6 +1,7 @@
 package server;
 
 import domain.entity.User;
+import domain.manager.ConfigManager;
 import domain.manager.UserManager;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -30,11 +31,8 @@ import java.util.Map;
 public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
 
     /**
-     * operation types
+     * system related operations
      */
-    private final String refresh = "refresh";
-    private final String getWeapon = "getWeapon";
-    private final String useWeapon = "useWeapon";
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -46,30 +44,25 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.getUri());
-            String path = queryStringDecoder.path().substring(1);
+            String operation = queryStringDecoder.path().substring(1);
             if(LittleGameServiceConfig.getInstance().isDebug())
             {
-                SimpleLogger.getLogger().debug("in debug model, path = " + path);
+                SimpleLogger.getLogger().debug("in debug model, path = " + operation);
             }
-            //process
-            if(path.equals(refresh))
+
+            if(LittleServiceConstants.isUserOperation(operation))
             {
-                //deal with refresh operation
-                this.refreshOperation(ctx, queryStringDecoder, req);
+                //process with user operation
+                this.processUserOperation(ctx, queryStringDecoder, req, operation);
             }
-            else if(path.equals(getWeapon))
+            else if(LittleServiceConstants.isSystemOperation(operation))
             {
-                //deal with getWeapon Operation
-                this.getWeaponOperation(ctx, queryStringDecoder, req);
-            }
-            else if(path.equals(useWeapon))
-            {
-                //deal with useWeapon Operation, which is the most complex
-                this.useWeaponOperation(ctx, queryStringDecoder, req);
+                //process with system operation
+                this.processSystemOperation(ctx, queryStringDecoder, req, operation);
             }
             else
             {
-                this.unrecognizedOperation(ctx, req, path);
+                this.unrecognizedOperation(ctx, req, operation);
             }
 
         }
@@ -82,6 +75,45 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     }
 
     /*-----------------------------------------user operation -----------------------------------------------*/
+    private void processUserOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req, String operation)
+    {
+        //process
+        if(operation.equals(LittleServiceConstants.UserOperations.create))
+        {
+            //create a user if user not exists
+            this.createOperation(ctx, queryStringDecoder, req);
+        }
+        else if(operation.equals(LittleServiceConstants.UserOperations.refresh))
+        {
+            //deal with refresh operation
+            this.refreshOperation(ctx, queryStringDecoder, req);
+        }
+        else if(operation.equals(LittleServiceConstants.UserOperations.getWeapon))
+        {
+            //deal with getWeapon Operation
+            this.getWeaponOperation(ctx, queryStringDecoder, req);
+        }
+        else if(operation.equals(LittleServiceConstants.UserOperations.useWeapon))
+        {
+            //deal with useWeapon Operation, which is the most complex
+            this.useWeaponOperation(ctx, queryStringDecoder, req);
+        }
+    }
+
+    private void createOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    {
+        //store all the parameters in map
+        Map<String, List<String>> params = queryStringDecoder.parameters();
+        String userName = getParameter("userName", params);
+        if(userName == null || userName.length() < 1)
+        {
+            SimpleLogger.getLogger().fatal("userName is null while creating user!");
+            this.writeResponse(ctx, req, "{status:fail, reason:userName is null}");
+            return;
+        }
+        String response = UserManager.getInstance().createUser(userName);
+        this.writeResponse(ctx, req, response);
+    }
 
     /**
      * refresh operation for user
@@ -105,17 +137,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             return ;
         }
         String userName = getParameter("userName", params);
-
-        UserManager.getInstance().createUser(userName);//TODO to be deleted, test only
-        User user = UserManager.getInstance().getExistUser(userName);
-
-        if(user == null)
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:no user exists}");
-            return ;
-        }
-
-        String response = user.refresh(longitude, latitude);
+        String response = UserManager.getInstance().refresh(userName, longitude, latitude);
         this.writeResponse(ctx, req, response);
     }
 
@@ -150,10 +172,25 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         String response = "{success: type = " + type +"}";
         this.writeResponse(ctx, req, response);
     }
+    /*-------------------------------------system operation-------------------------------------------------*/
+    private void processSystemOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req, String operation)
+    {
+        if(operation.equals(LittleServiceConstants.SystemOperations.reloadUserConfig))
+        {
+            this.reloadUserConfigOperation(ctx, queryStringDecoder, req);
+        }
+    }
 
+    private void reloadUserConfigOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    {
+        String response = ConfigManager.getInstance().reloadUserConfig();
+        writeResponse(ctx, req, response);
+    }
+
+    /*----------------------------------------unrecognized operation---------------------------------------*/
     private void unrecognizedOperation(ChannelHandlerContext ctx, HttpRequest req, String path)
     {
-        writeResponse(ctx, req, "{success:fail,reason:unrecognized path as " + path + "}");
+        writeResponse(ctx, req, "{status:fail,reason:unrecognized path as " + path + "}");
     }
 
     /*-----------------------------------------basic operation ----------------------------------------------*/

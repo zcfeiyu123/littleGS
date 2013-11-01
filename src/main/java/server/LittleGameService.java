@@ -8,6 +8,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import utils.SimpleLogger;
 
+import domain.manager.ConfigManager;
+
 /**
  * Created with IntelliJ IDEA.
  * User: zhangcen@youku.com
@@ -50,8 +52,20 @@ public class LittleGameService {
         } else {
             port = 9999;
         }
-        SimpleLogger.getLogger().debug("service started");
+
+        if(initConfigManager())
+        {
+            System.out.println("all config loaded");
+        }
+
+        //start server
         new LittleGameService(port).run();
+    }
+
+    private static boolean initConfigManager()
+    {
+        ConfigManager configManager = ConfigManager.getInstance();
+        return configManager.loadAllConfig();
     }
 
 }
