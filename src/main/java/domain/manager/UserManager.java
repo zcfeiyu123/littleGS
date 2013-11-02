@@ -8,6 +8,7 @@ package domain.manager;
  * To change this template use File | Settings | File Templates.
  */
 
+import domain.config.UserConfig;
 import domain.entity.Coordinates;
 import domain.entity.User;
 import utils.SimpleLogger;
@@ -28,7 +29,7 @@ public class UserManager {
     private HashMap<String, User> aliveUserMap = null;
     private HashMap<String, User> deadUserMap = null;
     //TODO location to user map should be a position to multi user, the design below MUST be revised!!!!!
-    private HashMap<double[], User> locationUserMap = null;
+    private HashMap<Coordinates, HashMap<String, User>> locationUserMap = null;
 
     private UserManager(){
         this.userMap = new HashMap<String, User>();
@@ -36,7 +37,7 @@ public class UserManager {
         this.deadUserMap = new HashMap<String, User>();
 
         //location related information
-        locationUserMap = new HashMap<double[], User>();
+        locationUserMap = new HashMap<Coordinates, HashMap<String, User>>();
     }
 
     public static UserManager getInstance()
@@ -113,17 +114,72 @@ public class UserManager {
         /*then we update the nearby users of this particular user, we do not register them to this user, but keep all
          * the information in UserManager
          */
-        String response = this.refreshUserStatus(user, oldCoordinates);
+        String response = "{status:success," + this.refreshUserStatus(user, oldCoordinates) + "}";
         return response;
     }
     /**
      * refresh user status
      * @param user
      */
-    private String refreshUserStatus(User user, Coordinates coordinates)
+    private String refreshUserStatus(User user, Coordinates oldCoordinates)
     {
-        //TODO have to complete this method asap
-        return "";
+        // this user updates her location status
+        if(oldCoordinates != null)
+        {
+            this.removeRegisteredUserByCoordinate(oldCoordinates, user.getName());
+        }
+        this.registerUserToCoordinates(user);
+        // what we return is users nearby
+        return refreshUsersNearby(user);
+    }
+
+    private void removeRegisteredUserByCoordinate(Coordinates coordinates, String userName)
+    {
+        if(coordinates == null)
+        {
+            return;
+        }
+        HashMap<String, User> userMap = locationUserMap.get(coordinates);
+        if(userMap.containsKey(userName))
+        {
+            userMap.remove(userName);
+        }
+    }
+
+    private void registerUserToCoordinates(User user)
+    {
+        HashMap<String, User> userMap = locationUserMap.containsKey(user.getCoordinates()) ? locationUserMap.get(user.getCoordinates()) : new HashMap<String, User>();
+        userMap.put(user.getName(), user);
+    }
+
+    private String refreshUsersNearby(User user)
+    {
+        return this.userListToTripleTupleString(selectUsersNearby(user));
+    }
+
+    private ArrayList<User> selectUsersNearby(User user)
+    {
+        //TODO range is not set for this method
+        return getUsersNearCoordinate(user.getCoordinates(), 0, UserConfig.getInstance().getNumberLimit());
+    }
+
+    //TODO this method below should be revised carefully, with consideration of range and numberLimit
+    private ArrayList<User> getUsersNearCoordinate(Coordinates coordinates, double range, int numberLimit)
+    {
+        ArrayList<User> userList = new ArrayList<User>();
+        userList.add(User.createUser("anotherTest"));
+        userList.get(0).registerCoordinates(CoordinateManager.getInstance().getCoordinates(333,444));
+        return userList;
+    }
+
+    private String userListToTripleTupleString(ArrayList<User> userArrayList)
+    {
+        StringBuilder userTripeTupleBuilder = new StringBuilder();
+        for(int i = 0, len = userArrayList.size(); i < len; i++)
+        {
+            userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append(",");
+        }
+        return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
     }
 
 
@@ -191,25 +247,9 @@ public class UserManager {
         return userArrayList;
     }
 
-    private String userListToString(ArrayList<User> userArrayList)
-    {
-        StringBuilder userNamesBuilder = new StringBuilder();
-        for(int i = 0, len = userArrayList.size(); i < len; i++)
-        {
-            userNamesBuilder.append(userArrayList.get(i).getName()).append(",");
-        }
-        return userNamesBuilder.deleteCharAt(userNamesBuilder.length() - 1).toString();
-    }
 
-    private String userListToTripleTupleString(ArrayList<User> userArrayList)
-    {
-        StringBuilder userTripeTupleBuilder = new StringBuilder();
-        for(int i = 0, len = userArrayList.size(); i < len; i++)
-        {
-            userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append(",");
-        }
-        return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
-    }
+
+
 
     /*-----------------------------------------common methods---------------------------------------------------------*/
 
@@ -233,6 +273,18 @@ public class UserManager {
         return aliveUserMap.containsKey(userName) ? aliveUserMap.get(userName) : null;
     }
 
-    /*----------------------------------user operation proxy parts-----------------------------------------------*/
 
+    private String userListToString(ArrayList<User> userArrayList)
+    {
+        if(userArrayList.size() < 1)
+        {
+            return "" ;
+        }
+        StringBuilder userNamesBuilder = new StringBuilder();
+        for(int i = 0, len = userArrayList.size(); i < len; i++)
+        {
+            userNamesBuilder.append(userArrayList.get(i).getName()).append(",");
+        }
+        return userNamesBuilder.deleteCharAt(userNamesBuilder.length() - 1).toString();
+    }
 }

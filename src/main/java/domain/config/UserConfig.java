@@ -23,6 +23,11 @@ public class UserConfig {
     private double attr5 = -1;
     private double attr6 = -1;
 
+    /**
+     * number limit of users nearby
+     */
+    private int numberLimit = 50;
+
     private static UserConfig instance = null;
     private UserConfig(){}
 
@@ -55,12 +60,18 @@ public class UserConfig {
         this.attr4 = -1;
         this.attr5 = -1;
         this.attr6 = -1;
+        this.numberLimit = 50;
     }
 
     private boolean loadPropertiesFromConfig()
     {
         //TODO we need to fill the content of this method
         return true;
+    }
+
+    public int getNumberLimit()
+    {
+        return this.numberLimit;
     }
 
 }

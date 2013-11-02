@@ -40,4 +40,10 @@ public class CoordinateManager {
         this.coordinatesHashMap.put(coordinateString, coordinatesInstance);
         return coordinatesInstance;
     }
+
+    public Coordinates getExistCoordinatesByName(double longitude, double latitude)
+    {
+        String coordinateString = String.valueOf(longitude) + "_" + String.valueOf(latitude);
+        return coordinatesHashMap.containsKey(coordinateString) ? coordinatesHashMap.get(coordinateString) : null;
+    }
 }
