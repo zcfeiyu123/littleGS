@@ -49,7 +49,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             {
                 SimpleLogger.getLogger().debug("in debug model, path = " + operation);
             }
-
+            //detect what kind of operation in process
             if(LittleServiceConstants.isUserOperation(operation))
             {
                 //process with user operation
@@ -60,7 +60,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
                 //process with system operation
                 this.processSystemOperation(ctx, queryStringDecoder, req, operation);
             }
-            else
+            else //this is an unrecognized operation
             {
                 this.unrecognizedOperation(ctx, req, operation);
             }
@@ -75,6 +75,14 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     }
 
     /*-----------------------------------------user operation -----------------------------------------------*/
+
+    /**
+     * process with user operation
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     * @param operation
+     */
     private void processUserOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req, String operation)
     {
         //process
@@ -100,6 +108,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
+    /**
+     * create a user when she logs in for the first time today
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     */
     private void createOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in map
@@ -134,6 +148,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         }catch(Exception e)
         {
             this.writeResponse(ctx, req, "{status:fail,reason:parameter is wrong}");
+            SimpleLogger.getLogger().fatal(e.getMessage());
             return ;
         }
         String userName = getParameter("userName", params);
@@ -141,6 +156,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         this.writeResponse(ctx, req, response);
     }
 
+    /**
+     * get weapon operation for user
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     */
     private void getWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
@@ -157,6 +178,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         this.writeResponse(ctx, req, response);
     }
 
+    /**
+     * use weapon operation for user
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     */
     private void useWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
@@ -172,7 +199,16 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         String response = "{success: type = " + type +"}";
         this.writeResponse(ctx, req, response);
     }
+
     /*-------------------------------------system operation-------------------------------------------------*/
+
+    /**
+     * process with system operation like reload config or something like that
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     * @param operation
+     */
     private void processSystemOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req, String operation)
     {
         if(operation.equals(LittleServiceConstants.SystemOperations.reloadUserConfig))
@@ -181,6 +217,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
+    /**
+     * reload user config
+     * @param ctx
+     * @param queryStringDecoder
+     * @param req
+     */
     private void reloadUserConfigOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         String response = ConfigManager.getInstance().reloadUserConfig();
@@ -188,6 +230,13 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     }
 
     /*----------------------------------------unrecognized operation---------------------------------------*/
+
+    /**
+     * deal with unrecognized operation
+     * @param ctx
+     * @param req
+     * @param path
+     */
     private void unrecognizedOperation(ChannelHandlerContext ctx, HttpRequest req, String path)
     {
         writeResponse(ctx, req, "{status:fail,reason:unrecognized path as " + path + "}");
@@ -201,27 +250,15 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
      * @return
      */
     public String getParameter(String key,  Map<String, List<String>> params) {
-        List<String> vals = params.get(key);
-        if(vals == null) {
+        List<String> values = params.get(key);
+        if(values == null || values.size() < 1)
+        {
             return null;
         }
-        String retStr = null;
-        StringBuilder buf = new StringBuilder();
-        if (key.equals("targetDates") || key.equals("cities")) {
-            for (int i = 0; i < vals.size(); i++) {
-                if (i < vals.size() - 1)
-                    buf.append(vals.get(i)).append(",");
-                else
-                    buf.append(vals.get(i));
-            }
-            retStr = buf.toString();
+        else
+        {
+            return values.get(0);
         }
-        else {
-            for (String val : vals) {
-                retStr = val;
-            }
-        }
-        return retStr;
     }
 
     /**

@@ -8,6 +8,7 @@ package domain.manager;
  * To change this template use File | Settings | File Templates.
  */
 
+import domain.entity.Coordinates;
 import domain.entity.User;
 import utils.SimpleLogger;
 import utils.StringUtils;
@@ -28,7 +29,6 @@ public class UserManager {
     private HashMap<String, User> deadUserMap = null;
     //TODO location to user map should be a position to multi user, the design below MUST be revised!!!!!
     private HashMap<double[], User> locationUserMap = null;
-    private HashMap<User, double[]> userLocationMap = null;
 
     private UserManager(){
         this.userMap = new HashMap<String, User>();
@@ -37,7 +37,6 @@ public class UserManager {
 
         //location related information
         locationUserMap = new HashMap<double[], User>();
-        userLocationMap = new HashMap<User, double[]>();
     }
 
     public static UserManager getInstance()
@@ -48,7 +47,35 @@ public class UserManager {
         }
         return instance;
     }
-
+    /*---------------------------------------methods for creating a new user-------------------------------------------*/
+    /**
+     * create a user instance
+     * @param userName
+     * @return
+     */
+    public String createUser(String userName)
+    {
+        //can not create such user
+        if(userName == null)
+        {
+            SimpleLogger.getLogger().fatal("userName is null while creating user");
+            return "{status:fail, reason:userName is null while creating user}";
+        }
+        //if the user already exist, we return her basic status
+        if(userMap.containsKey(userName))
+        {
+            return "{status:success," + userMap.get(userName).toJsonString() + "}";
+        }
+        //we have to create a new user using given name and register her to all the map
+        User user = User.createUser(userName);
+        registerUser(user);
+        registerAliveUser(user);// a new user must be an alive user
+        return "{status:success," + user.toJsonString() + "}";
+    }
+    /**
+     * register the user to all user HashMap
+     * @param user
+     */
     private void registerUser(User user)
     {
         if(user == null)
@@ -58,6 +85,10 @@ public class UserManager {
         this.userMap.put(user.getName(), user);
     }
 
+    /**
+     * register the user to all alive user HashMap
+     * @param user
+     */
     private void registerAliveUser(User user)
     {
         if(user == null)
@@ -67,63 +98,37 @@ public class UserManager {
         this.aliveUserMap.put(user.getName(), user);
     }
 
-    public void refreshUserStatus(User user)
+    /*-------------------------------------------refresh user operation methods---------------------------------------*/
+    public String refresh(String userName, double longitude, double latitude)
     {
-        //new position
-        if(userLocationMap.containsKey(user))
+        User user = getExistUser(userName);
+        if(user == null)
         {
-            double[] position = userLocationMap.get(user);
-            if(locationUserMap.containsKey(position))
-            {
-                locationUserMap.remove(position);
-            }
-            position[0] = user.getLongitude();
-            position[1] = user.getLatitude();
-            userLocationMap.put(user, position);
-            locationUserMap.put(position, user);
+            return "{status:fail,reason:user " + userName + " does not exist}";
         }
-        else
-        {
-            double[] position = new double[2];
-            position[0] = user.getLongitude();
-            position[1] = user.getLatitude();
-            userLocationMap.put(user, position);
-            locationUserMap.put(position,user);
-        }
+        //first, the user refresh her location status and at this time, we have update the information in locationMap
+        Coordinates oldCoordinates = user.getCoordinates();
+        Coordinates newCoordinates = CoordinateManager.getInstance().getCoordinates(longitude, latitude);
+        user.refresh(newCoordinates);
+        /*then we update the nearby users of this particular user, we do not register them to this user, but keep all
+         * the information in UserManager
+         */
+        String response = this.refreshUserStatus(user, oldCoordinates);
+        return response;
     }
-
     /**
-     * create a user instance
-     * @param userName
-     * @return
+     * refresh user status
+     * @param user
      */
-    public String createUser(String userName)
+    private String refreshUserStatus(User user, Coordinates coordinates)
     {
-        if(userName == null)
-        {
-            SimpleLogger.getLogger().fatal("userName is null while creating user");
-            return "{status:fail, reason:userName is null while creating user}";
-        }
-        if(userMap.containsKey(userName))
-        {
-            return "{status:success, result:user already exist}";
-        }
-        User user = User.getInstance(userName);
-        registerUser(user);
-        registerAliveUser(user);
-        SimpleLogger.getLogger().debug("creating user " + userName + " succeed");
-        return "{status:success, result:user creation succeed}";
+        //TODO have to complete this method asap
+        return "";
     }
 
-    private User getExistUser(String userName)
-    {
-        return userMap.containsKey(userName) ? userMap.get(userName) : null;
-    }
 
-    public User getAliveUser(String userName)
-    {
-        return aliveUserMap.containsKey(userName) ? aliveUserMap.get(userName) : null;
-    }
+
+
 
     public void processDeadUser(User user)
     {
@@ -166,7 +171,7 @@ public class UserManager {
         position[1] = latitude;
         //TODO get users nearby using given longitude and latitude
         ArrayList<User> userArrayList = new ArrayList<User>();
-        User user = User.getInstance("1234");
+        User user = User.createUser("1234");
         userArrayList.add(user);
         return userArrayList;
     }
@@ -206,14 +211,28 @@ public class UserManager {
         return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
     }
 
-    /*----------------------------------user operation proxy parts-----------------------------------------------*/
-    public String refresh(String userName, double longitude, double latitude)
+    /*-----------------------------------------common methods---------------------------------------------------------*/
+
+    /**
+     * get user instance from all user HashMap
+     * @param userName
+     * @return
+     */
+    private User getExistUser(String userName)
     {
-        User user = getExistUser(userName);
-        if(user == null)
-        {
-            return "{status:fail,reason:user " + userName + " does not exist}";
-        }
-        return user.refresh(longitude, latitude);
+        return userMap.containsKey(userName) ? userMap.get(userName) : null;
     }
+
+    /**
+     * get user instance from all alive user HashMap
+     * @param userName
+     * @return
+     */
+    public User getAliveUser(String userName)
+    {
+        return aliveUserMap.containsKey(userName) ? aliveUserMap.get(userName) : null;
+    }
+
+    /*----------------------------------user operation proxy parts-----------------------------------------------*/
+
 }

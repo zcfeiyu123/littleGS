@@ -25,8 +25,7 @@ public class User {
     /**
      * position infomation
      */
-    private double longitude = 0;
-    private double latitude = 0;
+    private Coordinates coordinates = null;
 
     /**
      * six basic attributes
@@ -46,30 +45,27 @@ public class User {
         this.weaponHashMap = new HashMap<Integer, Weapon>();
         this.weaponInventoryMap = new HashMap<Integer, Integer>();
     }
-
-    public static User getInstance(String name)
+    /*---------------------------------------------create user operation----------------------------------------------*/
+    public static User createUser(String name)
     {
         return new User(name);
     }
 
+    /*-------------------------------------------refresh user status operation----------------------------------------*/
     /**
-     *
+     * for this particular user instance, she can not obtain the information of any other users, so the only operation
+     * for her is updating her location status, the left parts of update information is left to UserManager
+     * @param coordinates
      * @return
      */
-    public String refresh(double longitude, double latitude)
+    public void refresh(Coordinates coordinates)
     {
-        //set new position information
-        this.setLatitude(latitude);
-        this.setLongitude(longitude);
-
-        //register this information in UserManager
-        UserManager.getInstance().refreshUserStatus(this);
-        //TODO to be finished
-        String nearbyUserNames = UserManager.getInstance().getNearbyUsers(longitude, latitude, 0);
-        String response = "{status:success," + nearbyUserNames + "}";
-        return response;
+        this.registerCoordinates(coordinates);
     }
 
+    /*--------------------------------------------get weapon operation------------------------------------------------*/
+
+    /*--------------------------------------------use weapon operation------------------------------------------------*/
     /*-------------------------weapon related----------------------*/
     public void registerWeapon(Weapon weapon)
     {
@@ -140,7 +136,7 @@ public class User {
         weaponInventoryMap.put(weaponId, inventory);
     }
 
-    /*-------------------------------events related------------------------------------------*/
+    /*-----------------------------------------------events related---------------------------------------------------*/
     public void registerEvents(EventMessage eventMessage)
     {
         this.eventMessageArrayList.add(eventMessage);
@@ -157,7 +153,18 @@ public class User {
         return sbd.toString();
     }
 
-    /*----------------------------------basic information--------------------------------------*/
+    /*---------------------------------coordinates related methods----------------------------------------------------*/
+    public Coordinates getCoordinates()
+    {
+        return this.coordinates;
+    }
+
+    public void registerCoordinates(Coordinates coordinates)
+    {
+        this.coordinates = coordinates;
+    }
+
+    /*----------------------------------getters and setters, status checker-------------------------------------------*/
     public String getName()
     {
         return name;
@@ -178,26 +185,7 @@ public class User {
         return HP > 0;
     }
 
-    public double getLongitude()
-    {
-        return this.longitude;
-    }
-
-    private void setLongitude(double longitude)
-    {
-        this.longitude = longitude;
-    }
-
-    public double getLatitude()
-    {
-        return this.latitude;
-    }
-
-    private void setLatitude(double latitude)
-    {
-        this.latitude = latitude;
-    }
-
+    /*------------------------------------all kinds of toString methods-----------------------------------------------*/
     /**
      * turn this user to a triple tuple String
      * @return
@@ -207,8 +195,26 @@ public class User {
         StringBuilder sbd = new StringBuilder();
         sbd.append("user").append(":");
         sbd.append(name).append("\t");
-        sbd.append(longitude).append("\t");
-        sbd.append(latitude);
+        sbd.append(coordinates.getLongitude()).append("\t");
+        sbd.append(coordinates.getLatitude());
+
+        return sbd.toString();
+    }
+
+    /**
+     * turn the basic information of the user into a json style string
+     * @return
+     */
+    public String toJsonString()
+    {
+        StringBuilder sbd = new StringBuilder("userName:").append(name);
+        sbd.append(",").append("hp:").append(HP);
+        sbd.append(",").append("atr1:").append(atr1);
+        sbd.append(",").append("atr2:").append(atr2);
+        sbd.append(",").append("atr3:").append(atr3);
+        sbd.append(",").append("atr4:").append(atr4);
+        sbd.append(",").append("atr5:").append(atr5);
+        sbd.append(",").append("atr6:").append(atr6);
 
         return sbd.toString();
     }
