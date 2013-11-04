@@ -182,7 +182,19 @@ public class UserManager {
         return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
     }
 
+    /*-----------------------------------methods for getting weapon for user------------------------------------------*/
+    public String getWeapon(String userName)
+    {
+        User user = userMap.containsKey(userName) ? userMap.get(userName) : null;
+        if(user == null)
+        {
+            return "";
+        }
 
+        //TODO we must set the number of weapons each person could get
+        ArrayList<Integer> weaponIdList = WeaponManager.getInstance().devliverWeapon(3);
+        return user.getWeapon(weaponIdList);
+    }
 
 
 

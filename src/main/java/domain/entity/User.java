@@ -4,8 +4,7 @@ import domain.manager.UserManager;
 import domain.manager.WeaponManager;
 import utils.SimpleLogger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.
@@ -18,9 +17,6 @@ public class User {
 
     private String name = null;
     private int HP = 0;
-    private ArrayList<EventMessage> eventMessageArrayList = null;
-    private HashMap<Integer, Weapon> weaponHashMap = null;
-    private HashMap<Integer, Integer> weaponInventoryMap = null;
 
     /**
      * position infomation
@@ -37,10 +33,22 @@ public class User {
     private double atr5 = 0;
     private double atr6 = 0;
 
+    /**
+     * weapon related parameters
+     */
+    private HashMap<Integer, Weapon> weaponHashMap = null;
+    private HashMap<Integer, Integer> weaponInventoryMap = null;
+    private boolean weaponAssigned = false;
+    /**
+     * events related parameters
+     */
+    private ArrayList<EventMessage> eventMessageArrayList = null;
+
     private User(String name)
     {
         this.name = name;
         this.HP = 5;//TODO we must give each user her corresponding hp
+        this.weaponAssigned = false;
         this.eventMessageArrayList = new ArrayList<EventMessage>();
         this.weaponHashMap = new HashMap<Integer, Weapon>();
         this.weaponInventoryMap = new HashMap<Integer, Integer>();
@@ -65,30 +73,37 @@ public class User {
 
     /*--------------------------------------------get weapon operation------------------------------------------------*/
 
-    /*--------------------------------------------use weapon operation------------------------------------------------*/
-    /*-------------------------weapon related----------------------*/
-    public void registerWeapon(Weapon weapon)
+    public String getWeapon(ArrayList<Integer> weaponIdList)
     {
-        int weaponId = weapon.getId();
-        if(this.weaponHashMap.containsKey(weaponId))
+        for(int i = 0 ,len = weaponIdList.size(); i < len; i++)
         {
-            int inventory = weaponInventoryMap.get(weaponId)+1;
-            weaponInventoryMap.put(weaponId, inventory);
+            this.registerWeapon(weaponIdList.get(i));
         }
-        else
-        {
-            weaponHashMap.put(weaponId, weapon);
-            weaponInventoryMap.put(weaponId, 1);
-        }
+
+        this.weaponAssigned = true;
+
+        return this.weaponToString();
     }
 
-    public String getWeapon()
+    private void registerWeapon(Integer weaponId)
     {
-        System.out.println("in getting weapon");
-        WeaponManager.getInstance().deliveryWeapon(this, 0);
-        return "get weapon";
-        //TODO finish getting weapon
+        int inventory = weaponInventoryMap.containsKey(weaponId) ? weaponInventoryMap.get(weaponId) + 1 : 1;
+        weaponInventoryMap.put(weaponId, inventory);
     }
+
+    private String weaponToString()
+    {
+        StringBuilder sbd = new StringBuilder();
+        Iterator<Map.Entry<Integer, Integer>> weaponIter = weaponInventoryMap.entrySet().iterator();
+        while(weaponIter.hasNext())
+        {
+            Map.Entry<Integer, Integer> entry = weaponIter.next();
+            sbd.append("[").append(entry.getKey()).append("\t").append(entry.getValue()).append("]");
+        }
+        return sbd.toString();
+    }
+
+    /*--------------------------------------------use weapon operation------------------------------------------------*/
 
     public String useWeapon(int weaponId, String targetUserNames)
     {
@@ -183,6 +198,11 @@ public class User {
     public boolean isUserDead()
     {
         return HP > 0;
+    }
+
+    public boolean isWeaponAssigned()
+    {
+        return this.weaponAssigned;
     }
 
     /*------------------------------------all kinds of toString methods-----------------------------------------------*/

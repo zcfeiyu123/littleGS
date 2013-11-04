@@ -166,15 +166,15 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
-        //params detected
-        String type = getParameter("type", params);
-        if(type == null || type.length() < 1)
+        //the only parameter we need to get a weapon for user is its userName
+        String userName = getParameter("userName", params);
+        if(userName == null || userName.length() < 1)
         {
-            this.writeResponse(ctx, req, "{fail:type is null}");
+            this.writeResponse(ctx, req, "{status:fail,reason:userName is null or empty}");
             return;
         }
-
-        String response = "{success: type = " + type +"}";
+        //params detected
+        String response = "{status:success,weapons:" + UserManager.getInstance().getWeapon(userName) + "}";
         this.writeResponse(ctx, req, response);
     }
 
