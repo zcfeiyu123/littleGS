@@ -213,7 +213,6 @@ public class User {
     public String toTripleTupleString()
     {
         StringBuilder sbd = new StringBuilder();
-        sbd.append("user").append(":");
         sbd.append(name).append("\t");
         sbd.append(coordinates.getLongitude()).append("\t");
         sbd.append(coordinates.getLatitude());

@@ -56,22 +56,16 @@ public class UserManager {
      */
     public String createUser(String userName)
     {
-        //can not create such user
-        if(userName == null)
-        {
-            SimpleLogger.getLogger().fatal("userName is null while creating user");
-            return "{status:fail, reason:userName is null while creating user}";
-        }
         //if the user already exist, we return her basic status
         if(userMap.containsKey(userName))
         {
-            return "{status:success," + userMap.get(userName).toJsonString() + "}";
+            return userMap.get(userName).toJsonString();
         }
         //we have to create a new user using given name and register her to all the map
         User user = User.createUser(userName);
         registerUser(user);
         registerAliveUser(user);// a new user must be an alive user
-        return "{status:success," + user.toJsonString() + "}";
+        return user.toJsonString();
     }
     /**
      * register the user to all user HashMap
@@ -103,10 +97,6 @@ public class UserManager {
     public String refresh(String userName, double longitude, double latitude)
     {
         User user = getExistUser(userName);
-        if(user == null)
-        {
-            return "{status:fail,reason:user " + userName + " does not exist}";
-        }
         //first, the user refresh her location status and at this time, we have update the information in locationMap
         Coordinates oldCoordinates = user.getCoordinates();
         Coordinates newCoordinates = CoordinateManager.getInstance().getCoordinates(longitude, latitude);
@@ -114,8 +104,7 @@ public class UserManager {
         /*then we update the nearby users of this particular user, we do not register them to this user, but keep all
          * the information in UserManager
          */
-        String response = "{status:success," + this.refreshUserStatus(user, oldCoordinates) + "}";
-        return response;
+        return this.refreshUserStatus(user, oldCoordinates);
     }
     /**
      * refresh user status
@@ -174,28 +163,37 @@ public class UserManager {
 
     private String userListToTripleTupleString(ArrayList<User> userArrayList)
     {
+        if(userArrayList.size() < 1)
+        {
+            return "user:";
+        }
         StringBuilder userTripeTupleBuilder = new StringBuilder();
         for(int i = 0, len = userArrayList.size(); i < len; i++)
         {
-            userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append(",");
+            userTripeTupleBuilder.append(userArrayList.get(i).toTripleTupleString()).append("\3");
         }
-        return userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
+        return "user:" + userTripeTupleBuilder.deleteCharAt(userTripeTupleBuilder.length() - 1).toString();
     }
 
     /*-----------------------------------methods for getting weapon for user------------------------------------------*/
     public String getWeapon(String userName)
     {
-        User user = userMap.containsKey(userName) ? userMap.get(userName) : null;
-        if(user == null)
-        {
-            return "";
-        }
-
+        User user = this.getExistUser(userName);
         //TODO we must set the number of weapons each person could get
-        ArrayList<Integer> weaponIdList = WeaponManager.getInstance().devliverWeapon(3);
+        ArrayList<Integer> weaponIdList = WeaponManager.getInstance().deliverWeapon(3);
         return user.getWeapon(weaponIdList);
     }
 
+    /*------------------------------------methods for using weapon----------------------------------------------------*/
+    public String useInstantActionWeapon(String userName, String targetUserList)
+    {
+        return "";
+    }
+
+    public String useDelayedActionWeapon(String userName, String targetTime)
+    {
+        return "";
+    }
 
 
     public void processDeadUser(User user)
@@ -264,6 +262,26 @@ public class UserManager {
 
 
     /*-----------------------------------------common methods---------------------------------------------------------*/
+
+    /**
+     * detect whether this user exist
+     * @param userName
+     * @return
+     */
+    public boolean isUserExist(String userName)
+    {
+        return this.userMap.containsKey(userName);
+    }
+
+    /**
+     * detect whether this user has had weapon
+     * @param userName
+     * @return
+     */
+    public boolean hasAssignedWeapon(String userName)
+    {
+        return this.userMap.get(userName).isWeaponAssigned();
+    }
 
     /**
      * get user instance from all user HashMap

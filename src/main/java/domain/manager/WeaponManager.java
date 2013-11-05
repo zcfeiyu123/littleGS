@@ -69,7 +69,7 @@ public class WeaponManager {
     }
 
     /*------------------------------------deliver weapon to one user--------------------------------------------------*/
-    public ArrayList<Integer> devliverWeapon(int numberOfWeapon)
+    public ArrayList<Integer> deliverWeapon(int numberOfWeapon)
     {
         //TODO finish the algorithm for deliver weapon, the rest part of the method is for test only
         ArrayList<Integer> weaponIdList = new ArrayList<Integer>();

@@ -121,12 +121,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         String userName = getParameter("userName", params);
         if(userName == null || userName.length() < 1)
         {
-            SimpleLogger.getLogger().fatal("userName is null while creating user!");
-            this.writeResponse(ctx, req, "{status:fail, reason:userName is null}");
+            this.writeResponse(ctx, req, "{status:fail,reason:userName is null or empty}");
             return;
         }
         String response = UserManager.getInstance().createUser(userName);
-        this.writeResponse(ctx, req, response);
+        String retString = "{status:success," + response + "}";
+        this.writeResponse(ctx, req, retString);
     }
 
     /**
@@ -148,12 +148,19 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         }catch(Exception e)
         {
             this.writeResponse(ctx, req, "{status:fail,reason:parameter is wrong}");
-            SimpleLogger.getLogger().fatal(e.getMessage());
             return ;
         }
         String userName = getParameter("userName", params);
+        if(!UserManager.getInstance().isUserExist(userName))
+        {
+            this.writeResponse(ctx, req, "{status:fail,reason:user " + userName + " does not exist}");
+            return;
+        }
         String response = UserManager.getInstance().refresh(userName, longitude, latitude);
-        this.writeResponse(ctx, req, response);
+        String retString = "{status:success,"+response+"}";
+        this.writeResponse(ctx, req, retString);
+
+        //TODO we still have to deal with events problems
     }
 
     /**
@@ -173,9 +180,19 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             this.writeResponse(ctx, req, "{status:fail,reason:userName is null or empty}");
             return;
         }
-        //params detected
-        String response = "{status:success,weapons:" + UserManager.getInstance().getWeapon(userName) + "}";
-        this.writeResponse(ctx, req, response);
+        if(!UserManager.getInstance().isUserExist(userName))
+        {
+            this.writeResponse(ctx, req, "{status:fail,reason:user " + userName + " does not exist}");
+            return;
+        }
+        if(UserManager.getInstance().hasAssignedWeapon(userName))
+        {
+            this.writeResponse(ctx, req, "{status:fail,reason:user has had weapon}");
+            return;
+        }
+        String response = UserManager.getInstance().getWeapon(userName);
+        String retString = "{status:success,result:" + response + "}";
+        this.writeResponse(ctx, req, retString);
     }
 
     /**
@@ -188,16 +205,30 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
-        //params detected
-        String type = getParameter("type", params);
-        if(type == null || type.length() < 1)
+        //parameters
+        String weaponUseType = getParameter("weaponUseType", params);
+        String userName = getParameter("userName", params);
+        String response = "";
+        if(weaponUseType.equals("instant"))
         {
-            this.writeResponse(ctx, req, "{fail:type is null}");
-            return;
+            String targetUserList = getParameter("targetUserList", params);
+            response = UserManager.getInstance().useInstantActionWeapon(userName, targetUserList);
         }
-
-        String response = "{success: type = " + type +"}";
-        this.writeResponse(ctx, req, response);
+        else if(weaponUseType.equals("delay"))
+        {
+            String targetTime = getParameter("targetTime", params);
+            response = UserManager.getInstance().useDelayedActionWeapon(userName, targetTime);
+        }
+        String retString = "";
+        if(response.length() < 1)
+        {
+            retString = "{status:fail,reason:}" + response;
+        }
+        else
+        {
+            retString = "{status:true,result:}" + response;
+        }
+        this.writeResponse(ctx, req, retString);
     }
 
     /*-------------------------------------system operation-------------------------------------------------*/
