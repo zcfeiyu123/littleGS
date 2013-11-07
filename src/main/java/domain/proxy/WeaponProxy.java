@@ -1,46 +1,39 @@
-package domain.manager;
+package domain.proxy;
 
-import domain.entity.User;
 import domain.entity.Weapon;
+import domain.log.Logger;
 
 import java.util.*;
 
 /**
  * Created with IntelliJ IDEA.
- * User: Aaron
- * Date: 13-11-1
- * Time: 上午12:01
- * To change this template use File | Settings | File Templates.
+ * Author: zhangcen
+ * Date: 13-11-7
+ * Time: 下午3:43
  */
-public class WeaponManager {
-
-    private static WeaponManager instance = null;
-    private WeaponManager(){
-        this.weaponHashMap = new HashMap<Integer, Weapon>();
-        this.rand = new Random();
+public class WeaponProxy {
+    private static WeaponProxy weaponProxyInstance = null;
+    private WeaponProxy(){}
+    public static WeaponProxy getWeaponProxyInstance()
+    {
+        if(weaponProxyInstance==null)
+        {
+            weaponProxyInstance = new WeaponProxy();
+        }
+        return weaponProxyInstance;
     }
-    private HashMap<Integer, Weapon> weaponHashMap = null; //store weaponId to its instance
+
+    //business part
+    private HashMap<Integer, Weapon> weaponHashMap = null;
     private int[] weaponIdArray = null; //store weapon's id in an array
     private int[] weaponInventoryArray = null; //store weapon's inventory in an array
     private double[] weaponProbArray = null; //store the probability of each weapon
     private Random rand = null;
 
-    public static WeaponManager getInstance()
-    {
-        if(instance == null)
-        {
-            instance = new WeaponManager();
-        }
-        return instance;
-    }
-
-    /*-------------------------------------load weapon data from database---------------------------------------------*/
-    /**
-     * load weapon instance from database
-     */
-    public void initWeaponHashMap()
-    {
+    public void init(){
         //TODO load weapons from database
+        weaponHashMap = new HashMap<Integer, Weapon>();
+        Logger.getInstance().debug("start init weapon proxy");
         //this map is a tmp place to store inventory information of weapon
         HashMap<Integer, Integer> weaponInventoryMap = new HashMap<Integer, Integer>();
 
@@ -66,12 +59,12 @@ public class WeaponManager {
         {
             weaponProbArray[i] = (double)weaponInventoryArray[i] / totalInventoryOfWeapons;
         }
+        Logger.getInstance().debug("weapon proxy init finish");
     }
 
     /*------------------------------------deliver weapon to one user--------------------------------------------------*/
     public ArrayList<Integer> deliverWeapon(int numberOfWeapon)
     {
-        //TODO finish the algorithm for deliver weapon, the rest part of the method is for test only
         ArrayList<Integer> weaponIdList = new ArrayList<Integer>();
         for(int i = 0; i < numberOfWeapon; i++)
         {
@@ -149,22 +142,4 @@ public class WeaponManager {
             return index;
         }
     }
-
-    /*--------------------------------------------use weapon parts----------------------------------------------------*/
-    public void useWeapon(int weaponId, User user, ArrayList<User> userArrayList)
-    {
-        this.weaponHashMap.get(weaponId).fire(user, userArrayList);
-    }
-
-    public boolean weaponExist(int weaponId)
-    {
-        return this.weaponHashMap.containsKey(weaponId);
-    }
-
-    public Weapon getWeaponById(int weaponId)
-    {
-        Weapon weapon = weaponHashMap.containsKey(weaponId) ? weaponHashMap.get(weaponId) : null;
-        return weapon;
-    }
-
 }

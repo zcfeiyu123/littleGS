@@ -1,8 +1,6 @@
 package domain.entity;
 
 import domain.manager.UserManager;
-import domain.manager.WeaponManager;
-import utils.SimpleLogger;
 
 import java.util.*;
 
@@ -125,12 +123,10 @@ public class User {
     {
         if(!weaponHashMap.containsKey(weaponId))
         {
-            SimpleLogger.getLogger().error("no weapon with id = " + weaponId + " in room");
             return ;
         }
         if(!weaponInventoryMap.containsKey(weaponId) || weaponInventoryMap.get(weaponId) < 1)
         {
-            SimpleLogger.getLogger().error("no weapon with id = " + weaponId + " in stock");
             return ;
         }
 
@@ -143,7 +139,6 @@ public class User {
     {
         if(!weaponInventoryMap.containsKey(weaponId) || weaponInventoryMap.get(weaponId) < 1)
         {
-            SimpleLogger.getLogger().error("no weapon with id = " + weaponId + " in stock");
             return ;
         }
         int inventory = weaponInventoryMap.get(weaponId) - count;

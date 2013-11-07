@@ -1,12 +1,12 @@
 package server;
 
+import domain.manager.EventManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import utils.SimpleLogger;
 
 import domain.manager.ConfigManager;
 
@@ -52,20 +52,16 @@ public class LittleGameService {
         } else {
             port = 9999;
         }
-
-        if(initConfigManager())
-        {
-            System.out.println("all config loaded");
-        }
+        initEventsManager();
 
         //start server
         new LittleGameService(port).run();
     }
 
-    private static boolean initConfigManager()
+    private static void initEventsManager()
     {
-        ConfigManager configManager = ConfigManager.getInstance();
-        return configManager.loadAllConfig();
+        EventManager manager = EventManager.getManager();
+        manager.initialization();
     }
 
 }

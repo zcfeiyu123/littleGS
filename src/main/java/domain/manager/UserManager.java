@@ -11,7 +11,6 @@ package domain.manager;
 import domain.config.UserConfig;
 import domain.entity.Coordinates;
 import domain.entity.User;
-import utils.SimpleLogger;
 import utils.StringUtils;
 
 import java.util.ArrayList;
@@ -185,12 +184,28 @@ public class UserManager {
     }
 
     /*------------------------------------methods for using weapon----------------------------------------------------*/
-    public String useInstantActionWeapon(String userName, String targetUserList)
+    public String useInstantActionWeapon(String userName, String targetUserList, int weaponId)
     {
+        WeaponManager.getInstance().useWeapon(weaponId ,userMap.get(userName), userStringToArrayList(targetUserList));
         return "";
     }
 
-    public String useDelayedActionWeapon(String userName, String targetTime)
+    private ArrayList<User> userStringToArrayList(String userString)
+    {
+        ArrayList<User> userArrayList = new ArrayList<User>();
+        String[] userNames = StringUtils.splitStr(userString, ',');
+        for(int i = 0, len = userNames.length; i < len; i++)
+        {
+            if(aliveUserMap.containsKey(userNames[i]))
+            {
+                userArrayList.add(aliveUserMap.get(userNames[i]));
+            }
+        }
+
+        return userArrayList;
+    }
+
+    public String useDelayedActionWeapon(String userName, String targetTime, int weaponId)
     {
         return "";
     }
@@ -242,20 +257,7 @@ public class UserManager {
         return userArrayList;
     }
 
-    private ArrayList<User> userStringToArrayList(String userString)
-    {
-        ArrayList<User> userArrayList = new ArrayList<User>();
-        String[] userNames = StringUtils.splitStr(userString, ',');
-        for(int i = 0, len = userNames.length; i < len; i++)
-        {
-            if(aliveUserMap.containsKey(userNames[i]))
-            {
-                userArrayList.add(aliveUserMap.get(userNames[i]));
-            }
-        }
 
-        return userArrayList;
-    }
 
 
 

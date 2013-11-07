@@ -1,7 +1,5 @@
 package domain.entity;
 
-import utils.SimpleLogger;
-
 /**
  * Created with IntelliJ IDEA.
  * User: Aaron
@@ -30,17 +28,14 @@ public class EventMessage {
     {
         if(fromUserID == null)
         {
-            SimpleLogger.getLogger().error("fromUserID is null when creating an EventMessage");
             return null;
         }
         else if(targetUserID == null)
         {
-            SimpleLogger.getLogger().error("targetUserID is null when creating an EventMessage");
             return null;
         }
         else if(weaponName == null)
         {
-            SimpleLogger.getLogger().error("weaponName is null when creating an EventMessage");
             return null;
         }
 

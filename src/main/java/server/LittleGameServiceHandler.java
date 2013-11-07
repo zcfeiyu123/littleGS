@@ -1,6 +1,6 @@
 package server;
 
-import domain.entity.User;
+import domain.log.Logger;
 import domain.manager.ConfigManager;
 import domain.manager.UserManager;
 import io.netty.buffer.Unpooled;
@@ -11,7 +11,6 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import utils.SimpleLogger;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.*;
 import static io.netty.handler.codec.http.HttpHeaders.*;
@@ -29,10 +28,7 @@ import java.util.Map;
  * To change this template use File | Settings | File Templates.
  */
 public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
-
-    /**
-     * system related operations
-     */
+    private Logger logger = Logger.getInstance();
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -47,7 +43,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             String operation = queryStringDecoder.path().substring(1);
             if(LittleGameServiceConfig.getInstance().isDebug())
             {
-                SimpleLogger.getLogger().debug("in debug model, path = " + operation);
+                logger.debug("in debug model, path = " + operation);
             }
             //detect what kind of operation in process
             if(LittleServiceConstants.isUserOperation(operation))
@@ -208,16 +204,17 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         //parameters
         String weaponUseType = getParameter("weaponUseType", params);
         String userName = getParameter("userName", params);
+        String weaponId = getParameter("weaponId", params);
         String response = "";
         if(weaponUseType.equals("instant"))
         {
             String targetUserList = getParameter("targetUserList", params);
-            response = UserManager.getInstance().useInstantActionWeapon(userName, targetUserList);
+            response = UserManager.getInstance().useInstantActionWeapon(userName, targetUserList, Integer.parseInt(weaponId));
         }
         else if(weaponUseType.equals("delay"))
         {
             String targetTime = getParameter("targetTime", params);
-            response = UserManager.getInstance().useDelayedActionWeapon(userName, targetTime);
+            response = UserManager.getInstance().useDelayedActionWeapon(userName, targetTime, Integer.parseInt(weaponId));
         }
         String retString = "";
         if(response.length() < 1)
