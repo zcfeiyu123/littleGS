@@ -1,10 +1,12 @@
 package domain.proxy;
 
-import domain.config.UserConfig;
+import domain.entity.Coordinates;
+import domain.entity.UserConfig;
 import domain.entity.User;
 import domain.log.Logger;
 
 import java.util.HashMap;
+import java.util.Iterator;
 
 /**
  * Created with IntelliJ IDEA.
@@ -16,7 +18,11 @@ public class UserProxy {
 
     /*--------------------------------------------instance parts------------------------------------------------------*/
     private static UserProxy userProxyInstance = null;
-    private UserProxy(){}
+    private UserProxy(){
+        allUserMap = new HashMap<String, User>();
+        aliveUserMap = new HashMap<String, User>();
+        deadUserMap = new HashMap<String, User>();
+    }
     public static UserProxy getUserProxyInstance()
     {
         if(userProxyInstance == null)
@@ -39,9 +45,7 @@ public class UserProxy {
     {
         Logger.getInstance().debug("start init user proxy");
         config = UserConfig.getInstance();
-        allUserMap = new HashMap<String, User>();
-        aliveUserMap = new HashMap<String, User>();
-        deadUserMap = new HashMap<String, User>();
+        config.load();
         Logger.getInstance().debug("user proxy init finish");
     }
 
@@ -62,11 +66,21 @@ public class UserProxy {
      */
     public String createUser(String userName)
     {
-        User newUser = User.createUser(userName);
+        User newUser = User.createUser(userName, config);
         //we need to register this user to hash map
-        this.allUserMap.put(userName, newUser);
-        this.aliveUserMap.put(userName, newUser);
+        registerUserToAllUserMap(newUser);
+        registerUserToAliveUserMap(newUser);
         return newUser.toJsonString();
+    }
+
+    private void registerUserToAllUserMap(User user)
+    {
+        allUserMap.put(user.getName(), user);
+    }
+
+    private void registerUserToAliveUserMap(User user)
+    {
+        aliveUserMap.put(user.getName(), user);
     }
 
     /**
@@ -77,5 +91,31 @@ public class UserProxy {
     public String existUserToJsonString(String userName)
     {
         return allUserMap.get(userName).toJsonString();
+    }
+
+    /*---------------------------------------------user refresh parts-------------------------------------------------*/
+    public String getUserPositionKey(String userName)
+    {
+        return allUserMap.get(userName).coordinatesToString();
+    }
+
+    public void registerPosition(String userName, Coordinates c)
+    {
+        allUserMap.get(userName).registerCoordinates(c);
+    }
+
+    public String userToPositionString(String userName)
+    {
+        return allUserMap.get(userName).toTripleTupleString();
+    }
+
+    //some methods makes testing easy
+    public void printAllUser()
+    {
+        Iterator<String> nameIterator = allUserMap.keySet().iterator();
+        while(nameIterator.hasNext())
+        {
+            System.out.println(nameIterator.next() + " in hash map");
+        }
     }
 }

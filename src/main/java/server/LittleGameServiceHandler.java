@@ -1,7 +1,8 @@
 package server;
 
+import domain.entity.UserConfig;
 import domain.log.Logger;
-import domain.manager.ConfigManager;
+import domain.manager.EventManager;
 import domain.manager.UserManager;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -41,10 +42,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             HttpRequest req = (HttpRequest) msg;
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.getUri());
             String operation = queryStringDecoder.path().substring(1);
-            if(LittleGameServiceConfig.getInstance().isDebug())
-            {
-                logger.debug("in debug model, path = " + operation);
-            }
+            logger.debug("in debug model, path = " + operation);
             //detect what kind of operation in process
             if(LittleServiceConstants.isUserOperation(operation))
             {
@@ -114,13 +112,13 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     {
         //store all the parameters in map
         Map<String, List<String>> params = queryStringDecoder.parameters();
-        String userName = getParameter("userName", params);
+        String userName = getParameter("userName", params).trim();
         if(userName == null || userName.length() < 1)
         {
             this.writeResponse(ctx, req, "{status:fail,reason:userName is null or empty}");
             return;
         }
-        String response = UserManager.getInstance().createUser(userName);
+        String response = EventManager.getManager().create(userName);
         String retString = "{status:success," + response + "}";
         this.writeResponse(ctx, req, retString);
     }
@@ -146,16 +144,8 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             this.writeResponse(ctx, req, "{status:fail,reason:parameter is wrong}");
             return ;
         }
-        String userName = getParameter("userName", params);
-        if(!UserManager.getInstance().isUserExist(userName))
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:user " + userName + " does not exist}");
-            return;
-        }
-        String response = UserManager.getInstance().refresh(userName, longitude, latitude);
-        String retString = "{status:success,"+response+"}";
-        this.writeResponse(ctx, req, retString);
-
+        String userName = getParameter("userName", params).trim();
+        this.writeResponse(ctx, req, EventManager.getManager().refresh(userName, longitude, latitude));
         //TODO we still have to deal with events problems
     }
 
@@ -253,7 +243,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
      */
     private void reloadUserConfigOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
-        String response = ConfigManager.getInstance().reloadUserConfig();
+        String response = UserConfig.getInstance().reload();
         writeResponse(ctx, req, response);
     }
 

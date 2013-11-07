@@ -8,7 +8,7 @@ package domain.manager;
  * To change this template use File | Settings | File Templates.
  */
 
-import domain.config.UserConfig;
+import domain.entity.UserConfig;
 import domain.entity.Coordinates;
 import domain.entity.User;
 import utils.StringUtils;
@@ -46,50 +46,6 @@ public class UserManager {
             instance = new UserManager();
         }
         return instance;
-    }
-    /*---------------------------------------methods for creating a new user-------------------------------------------*/
-    /**
-     * create a user instance
-     * @param userName
-     * @return
-     */
-    public String createUser(String userName)
-    {
-        //if the user already exist, we return her basic status
-        if(userMap.containsKey(userName))
-        {
-            return userMap.get(userName).toJsonString();
-        }
-        //we have to create a new user using given name and register her to all the map
-        User user = User.createUser(userName);
-        registerUser(user);
-        registerAliveUser(user);// a new user must be an alive user
-        return user.toJsonString();
-    }
-    /**
-     * register the user to all user HashMap
-     * @param user
-     */
-    private void registerUser(User user)
-    {
-        if(user == null)
-        {
-            return ;
-        }
-        this.userMap.put(user.getName(), user);
-    }
-
-    /**
-     * register the user to all alive user HashMap
-     * @param user
-     */
-    private void registerAliveUser(User user)
-    {
-        if(user == null)
-        {
-            return ;
-        }
-        this.aliveUserMap.put(user.getName(), user);
     }
 
     /*-------------------------------------------refresh user operation methods---------------------------------------*/
@@ -148,15 +104,13 @@ public class UserManager {
     private ArrayList<User> selectUsersNearby(User user)
     {
         //TODO range is not set for this method
-        return getUsersNearCoordinate(user.getCoordinates(), 0, UserConfig.getInstance().getNumberLimit());
+        return getUsersNearCoordinate(user.getCoordinates(), 0, 0);
     }
 
     //TODO this method below should be revised carefully, with consideration of range and numberLimit
     private ArrayList<User> getUsersNearCoordinate(Coordinates coordinates, double range, int numberLimit)
     {
         ArrayList<User> userList = new ArrayList<User>();
-        userList.add(User.createUser("anotherTest"));
-        userList.get(0).registerCoordinates(CoordinateManager.getInstance().getCoordinates(333,444));
         return userList;
     }
 
@@ -252,8 +206,6 @@ public class UserManager {
         position[1] = latitude;
         //TODO get users nearby using given longitude and latitude
         ArrayList<User> userArrayList = new ArrayList<User>();
-        User user = User.createUser("1234");
-        userArrayList.add(user);
         return userArrayList;
     }
 

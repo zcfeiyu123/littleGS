@@ -42,22 +42,48 @@ public class User {
      */
     private ArrayList<EventMessage> eventMessageArrayList = null;
 
-    private User(String name)
+    private User(String name, UserConfig config)
     {
         this.name = name;
-        this.HP = 5;//TODO we must give each user her corresponding hp
+        //set up basic parameters
+        this.HP = config.getDefaultHP();
+        this.atr1 = config.getDefaultAttr1();
+        this.atr2 = config.getDefaultAttr2();
+        this.atr3 = config.getDefaultAttr3();
+        this.atr4 = config.getDefaultAttr4();
+        this.atr5 = config.getDefaultAttr5();
+        this.atr6 = config.getDefaultAttr6();
+
         this.weaponAssigned = false;
         this.eventMessageArrayList = new ArrayList<EventMessage>();
         this.weaponHashMap = new HashMap<Integer, Weapon>();
         this.weaponInventoryMap = new HashMap<Integer, Integer>();
     }
     /*---------------------------------------------create user operation----------------------------------------------*/
-    public static User createUser(String name)
+    public static User createUser(String name, UserConfig config)
     {
-        return new User(name);
+        return new User(name, config);
     }
 
     /*-------------------------------------------refresh user status operation----------------------------------------*/
+
+    public String coordinatesToString()
+    {
+        if(coordinates == null)
+        {
+            return "";
+        }
+        else
+        {
+            return coordinates.getPositionKey();
+        }
+    }
+
+    public void registerCoordinates(Coordinates c)
+    {
+        coordinates = c;
+    }
+
     /**
      * for this particular user instance, she can not obtain the information of any other users, so the only operation
      * for her is updating her location status, the left parts of update information is left to UserManager
@@ -169,11 +195,6 @@ public class User {
         return this.coordinates;
     }
 
-    public void registerCoordinates(Coordinates coordinates)
-    {
-        this.coordinates = coordinates;
-    }
-
     /*----------------------------------getters and setters, status checker-------------------------------------------*/
     public String getName()
     {
@@ -207,10 +228,10 @@ public class User {
      */
     public String toTripleTupleString()
     {
-        StringBuilder sbd = new StringBuilder();
-        sbd.append(name).append("\t");
-        sbd.append(coordinates.getLongitude()).append("\t");
-        sbd.append(coordinates.getLatitude());
+        StringBuilder sbd = new StringBuilder("[");
+        sbd.append(name).append("\2");
+        sbd.append(coordinates.getLongitude()).append("\2");
+        sbd.append(coordinates.getLatitude()).append("]");
 
         return sbd.toString();
     }

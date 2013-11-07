@@ -28,4 +28,9 @@ public class Coordinates {
         return latitude;
     }
 
+    public String getPositionKey()
+    {
+        return String.valueOf(longitude) + "_" + String.valueOf(latitude);
+    }
+
 }

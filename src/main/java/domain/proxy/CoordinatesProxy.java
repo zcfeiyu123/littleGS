@@ -42,8 +42,7 @@ public class CoordinatesProxy {
     public void createCoordinates(double longitude, double latitude)
     {
         Coordinates c = new Coordinates(longitude, latitude);
-        String key = String.valueOf(longitude) + "_" + String.valueOf(latitude);
-        coordinatesHashMap.put(key, c);
+        coordinatesHashMap.put(c.getPositionKey(), c);
     }
 
     public Coordinates getCoordinatesByName(String key)
@@ -54,6 +53,11 @@ public class CoordinatesProxy {
     public void removeCoordinatesFromHashMap(String key)
     {
         coordinatesHashMap.remove(key);
+    }
+
+    public void removeCoordinatesFromHashMap(Coordinates c)
+    {
+        coordinatesHashMap.remove(c.getPositionKey());
     }
 
 }
