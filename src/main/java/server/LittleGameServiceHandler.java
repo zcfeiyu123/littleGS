@@ -145,7 +145,8 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             return ;
         }
         String userName = getParameter("userName", params).trim();
-        this.writeResponse(ctx, req, EventManager.getManager().refresh(userName, longitude, latitude));
+        String retString = EventManager.getManager().refresh(userName, longitude, latitude);
+        this.writeResponse(ctx, req, retString);
         //TODO we still have to deal with events problems
     }
 

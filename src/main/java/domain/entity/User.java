@@ -229,8 +229,8 @@ public class User {
     public String toTripleTupleString()
     {
         StringBuilder sbd = new StringBuilder("[");
-        sbd.append(name).append("\2");
-        sbd.append(coordinates.getLongitude()).append("\2");
+        sbd.append(name).append("\t");
+        sbd.append(coordinates.getLongitude()).append("\t");
         sbd.append(coordinates.getLatitude()).append("]");
 
         return sbd.toString();

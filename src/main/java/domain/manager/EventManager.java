@@ -51,9 +51,12 @@ public class EventManager {
         config = EventManagerConfig.getInstance();
         config.load();
         //all proxies init
-        CoordinatesProxy.getCoordinatesProxyInstance().init();
-        UserProxy.getUserProxyInstance().init();
-        WeaponProxy.getWeaponProxyInstance().init();
+        coordinatesProxy = CoordinatesProxy.getCoordinatesProxyInstance();
+        coordinatesProxy.init();
+        userProxy = UserProxy.getUserProxyInstance();
+        userProxy.init();
+        weaponProxy = WeaponProxy.getWeaponProxyInstance();
+        weaponProxy.init();
 
         //all hash maps
         userWeaponInventoryMap = new HashMap<String, HashMap<Integer, Integer>>();
@@ -71,45 +74,44 @@ public class EventManager {
      */
     public String create(String userName)
     {
-        if(UserProxy.getUserProxyInstance().isUserExist(userName))
+        if(userProxy.isUserExist(userName))
         {
-            return UserProxy.getUserProxyInstance().existUserToJsonString(userName);
+            return userProxy.existUserToJsonString(userName);
         }
         else
         {
-            return UserProxy.getUserProxyInstance().createUser(userName);
+            return userProxy.createUser(userName);
         }
     }
 
     /*-------------------------------------user refresh operation-----------------------------------------------------*/
     public String refresh(String userName, double longitude, double latitude)
     {
-        Logger.getInstance().debug("user name = " + userName);
-        UserProxy.getUserProxyInstance().printAllUser();
-        Logger.getInstance().mark();
-        if(UserProxy.getUserProxyInstance().isUserExist(userName))
+//        Logger.getInstance().debug("user name = " + userName);
+//        UserProxy.getUserProxyInstance().printAllUser();
+//        Logger.getInstance().mark();
+        if(!userProxy.isUserExist(userName))
         {
             return "{status:fail,reason:user " + userName + " does not exist}";
         }
         //remove old position information for this user
-        String oldPositionKey = UserProxy.getUserProxyInstance().getUserPositionKey(userName);
+        String oldPositionKey = userProxy.getUserPositionKey(userName);
         String newPositionKey = String.valueOf(longitude) + "_" + String.valueOf(latitude);
-        if(oldPositionKey.length() > 0 && !oldPositionKey.equals(newPositionKey))
-        {
-            //which means it is not the first time the user refresh, so we have to remove his old position
-            cleanPositionInformationForUser(userName, oldPositionKey);
-            setNewPositionInformationForUser(userName, newPositionKey);
-        }
+        cleanPositionInformationForUser(userName, oldPositionKey);
+        setNewPositionInformationForUser(userName, newPositionKey);
         //add new information for user instance
         if(!coordinatesProxy.isCoordinateExist(newPositionKey))
         {
             coordinatesProxy.createCoordinates(longitude,latitude);
         }
         Coordinates c = coordinatesProxy.getCoordinatesByName(newPositionKey);
-        UserProxy.getUserProxyInstance().registerPosition(userName, c);
+        if(c != null)
+        {
+            userProxy.registerPosition(userName, c);
+        }
         //find users nearby
-        String[] userNameArray = findUsersNearby(newPositionKey);
-        return "{status:succeed,"+userNameArrayToUserPositionString(userNameArray)+"}";
+        String[] userNameArray = findUsersNearby(newPositionKey, userName);
+        return "{status:success,"+userNameArrayToUserPositionString(userNameArray)+"}";
     }
 
     private void cleanPositionInformationForUser(String userName, String oldPositionKey)
@@ -127,10 +129,11 @@ public class EventManager {
     {
         HashSet<String> userNameSet = coordinatesToUserMap.containsKey(positionKey) ? coordinatesToUserMap.get(positionKey) : new HashSet<String>();
         userNameSet.add(userName);
+//        Logger.getInstance().debug("positionKey = " + positionKey + " and we are in set new position for user " + userName);
         coordinatesToUserMap.put(positionKey, userNameSet);
     }
 
-    private String[] findUsersNearby(String positionKey)
+    private String[] findUsersNearby(String positionKey, String ownUserName)
     {
         String[] userNameArray = new String[config.getNumOfPeople()];
         Iterator<String> userNameIterator = coordinatesToUserMap.get(positionKey).iterator();
@@ -138,7 +141,7 @@ public class EventManager {
         while(userNameIterator.hasNext() && index < userNameArray.length)
         {
             String userName = userNameIterator.next();
-            if(UserProxy.getUserProxyInstance().isUserAlive(userName))
+            if(userProxy.isUserAlive(userName) && !ownUserName.equals(userName))
             {
                 userNameArray[index] = userName;
                 index++;
@@ -159,7 +162,7 @@ public class EventManager {
         {
             if(userNameArray[i] != null)
             {
-                sbd.append(UserProxy.getUserProxyInstance().userToPositionString(userNameArray[i])).append("\3");
+                sbd.append(userProxy.userToPositionString(userNameArray[i])).append(";");
             }
         }
         return sbd.deleteCharAt(sbd.length()-1).toString();
