@@ -54,6 +54,11 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
                 //process with system operation
                 this.processSystemOperation(ctx, queryStringDecoder, req, operation);
             }
+            else if(operation.equals(LittleServiceConstants.commonOperations.icon))
+            {
+                logger.debug("in icon model when path = " + operation);
+                return;
+            }
             else //this is an unrecognized operation
             {
                 this.unrecognizedOperation(ctx, req, operation);

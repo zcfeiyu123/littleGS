@@ -20,7 +20,11 @@ public class LittleServiceConstants {
     public class SystemOperations
     {
         public static final String reloadUserConfig = "ReloadUserConfig";
+    }
 
+    public class commonOperations
+    {
+        public static final String icon = "favicon.ico";
     }
 
     public static boolean isUserOperation(String operation)

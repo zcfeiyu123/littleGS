@@ -6,6 +6,7 @@ import domain.log.Logger;
 import domain.proxy.CoordinatesProxy;
 import domain.proxy.UserProxy;
 import domain.proxy.WeaponProxy;
+import utils.NumericalUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,9 @@ public class EventManager {
     //business parts
     //config
     private EventManagerConfig config = null;
+    private int numOfPeople = 0;
+    private double stepSize = 0;
+    private String numberPattern;
     //proxies
     private CoordinatesProxy coordinatesProxy = null;
     private UserProxy userProxy = null;
@@ -50,6 +54,7 @@ public class EventManager {
         //config
         config = EventManagerConfig.getInstance();
         config.load();
+        setParameters();
         //all proxies init
         coordinatesProxy = CoordinatesProxy.getCoordinatesProxyInstance();
         coordinatesProxy.init();
@@ -64,6 +69,20 @@ public class EventManager {
 
         Logger.getInstance().info("everything init finish");
         Logger.getInstance().mark();
+    }
+
+    private void setParameters()
+    {
+        this.numOfPeople = config.getNumOfPeople();
+        this.stepSize = config.getStepSize();
+        this.numberPattern = config.getNumberPattern();
+    }
+
+    public String reloadConfig()
+    {
+        String retString = config.reload();
+        setParameters();
+        return retString;
     }
 
     /*-------------------------------------create user operation-----------------------------------------------------*/
@@ -87,9 +106,6 @@ public class EventManager {
     /*-------------------------------------user refresh operation-----------------------------------------------------*/
     public String refresh(String userName, double longitude, double latitude)
     {
-//        Logger.getInstance().debug("user name = " + userName);
-//        UserProxy.getUserProxyInstance().printAllUser();
-//        Logger.getInstance().mark();
         if(!userProxy.isUserExist(userName))
         {
             return "{status:fail,reason:user " + userName + " does not exist}";
@@ -110,7 +126,7 @@ public class EventManager {
             userProxy.registerPosition(userName, c);
         }
         //find users nearby
-        String[] userNameArray = findUsersNearby(newPositionKey, userName);
+        String[] userNameArray = findUsersNearby(longitude, latitude, userName);
         return "{status:success,"+userNameArrayToUserPositionString(userNameArray)+"}";
     }
 
@@ -133,22 +149,151 @@ public class EventManager {
         coordinatesToUserMap.put(positionKey, userNameSet);
     }
 
-    private String[] findUsersNearby(String positionKey, String ownUserName)
+    private String[] findUsersNearby(double longitude, double latitude,  String ownUserName)
     {
-        String[] userNameArray = new String[config.getNumOfPeople()];
-        Iterator<String> userNameIterator = coordinatesToUserMap.get(positionKey).iterator();
+        int range = userProxy.getUserAttr1(ownUserName);
+        int rangeSquare = range * range;
+        String[] userNameArray = new String[numOfPeople];
         int index = 0;
-        while(userNameIterator.hasNext() && index < userNameArray.length)
+        String positionKey;
+        //TODO to optimize it in the future
+        //process the same location
+        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
+        Logger.getInstance().debug("positionKey = " + positionKey);
+        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+        if(index >= numOfPeople)
         {
-            String userName = userNameIterator.next();
-            if(userProxy.isUserAlive(userName) && !ownUserName.equals(userName))
+            return userNameArray;
+        }
+        //start iteration
+        //first we deal with the problem that one parameter = 0
+        for(int k = 1; k < range; k++)
+        {
+            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * k);
+            Logger.getInstance().debug("positionKey = " + positionKey);
+            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+            if(index >= numOfPeople)
             {
-                userNameArray[index] = userName;
-                index++;
+                return userNameArray;
+            }
+            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * k);
+            Logger.getInstance().debug("positionKey = " + positionKey);
+            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+            if(index >= numOfPeople)
+            {
+                return userNameArray;
+            }
+            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * k)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
+            Logger.getInstance().debug("positionKey = " + positionKey);
+            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+            if(index >= numOfPeople)
+            {
+                return userNameArray;
+            }
+            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * k)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
+            Logger.getInstance().debug("positionKey = " + positionKey);
+            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+            if(index >= numOfPeople)
+            {
+                return userNameArray;
             }
         }
-
+        // no parameter = 0
+        for(int i = 1; i < range; i++)
+        {
+            for(int j = i; j < range ; j++)
+            {
+                if(i*i + j*j < rangeSquare) // a valid position
+                {
+                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * j);
+                    Logger.getInstance().debug("positionKey = " + positionKey);
+                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                    if(index >= numOfPeople)
+                    {
+                        return userNameArray;
+                    }
+                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * j);
+                    Logger.getInstance().debug("positionKey = " + positionKey);
+                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                    if(index >= numOfPeople)
+                    {
+                        return userNameArray;
+                    }
+                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * j);
+                    Logger.getInstance().debug("positionKey = " + positionKey);
+                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                    if(index >= numOfPeople)
+                    {
+                        return userNameArray;
+                    }
+                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * j);
+                    Logger.getInstance().debug("positionKey = " + positionKey);
+                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                    if(index >= numOfPeople)
+                    {
+                        return userNameArray;
+                    }
+                    if(i != j)
+                    {
+                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * i);
+                        Logger.getInstance().debug("positionKey = " + positionKey);
+                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                        if(index >= numOfPeople)
+                        {
+                            return userNameArray;
+                        }
+                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * i);
+                        Logger.getInstance().debug("positionKey = " + positionKey);
+                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                        if(index >= numOfPeople)
+                        {
+                            return userNameArray;
+                        }
+                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * i);
+                        Logger.getInstance().debug("positionKey = " + positionKey);
+                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                        if(index >= numOfPeople)
+                        {
+                            return userNameArray;
+                        }
+                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * i);
+                        Logger.getInstance().debug("positionKey = " + positionKey);
+                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
+                        if(index >= numOfPeople)
+                        {
+                            return userNameArray;
+                        }
+                    }
+                }
+            }
+        }
         return userNameArray;
+    }
+
+    private int fillUserNameArrayByPositionKey(String[] userNameArray, String positionKey, int index, String ownUserName)
+    {
+        if(index >= numOfPeople)
+        {
+            return index;
+        }
+        Iterator<String> userNameIterator = coordinatesToUserMap.containsKey(positionKey) ? coordinatesToUserMap.get(positionKey).iterator() : null;
+        if(userNameIterator != null)
+        {
+            while(userNameIterator.hasNext())
+            {
+                String userName = userNameIterator.next();
+                if(userProxy.isUserAlive(userName) && !userName.equals(ownUserName))
+                {
+                    userNameArray[index] = userName;
+                    index++;
+                    if(index >= numOfPeople)
+                    {
+                        return index;
+                    }
+                }
+            }
+        }
+        return index;
     }
 
     private String userNameArrayToUserPositionString(String[] userNameArray)

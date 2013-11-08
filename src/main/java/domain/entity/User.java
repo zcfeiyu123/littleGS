@@ -24,12 +24,12 @@ public class User {
     /**
      * six basic attributes
      */
-    private double atr1 = 0;
-    private double atr2 = 0;
-    private double atr3 = 0;
-    private double atr4 = 0;
-    private double atr5 = 0;
-    private double atr6 = 0;
+    private int atr1 = 0;
+    private int atr2 = 0;
+    private int atr3 = 0;
+    private int atr4 = 0;
+    private int atr5 = 0;
+    private int atr6 = 0;
 
     /**
      * weapon related parameters
@@ -219,6 +219,31 @@ public class User {
     public boolean isWeaponAssigned()
     {
         return this.weaponAssigned;
+    }
+
+    public int getAtr1()
+    {
+        return atr1;
+    }
+    public int getAtr2()
+    {
+        return atr2;
+    }
+    public int getAtr3()
+    {
+        return atr3;
+    }
+    public int getAtr4()
+    {
+        return atr4;
+    }
+    public int getAtr5()
+    {
+        return atr5;
+    }
+    public int getAtr6()
+    {
+        return atr6;
     }
 
     /*------------------------------------all kinds of toString methods-----------------------------------------------*/

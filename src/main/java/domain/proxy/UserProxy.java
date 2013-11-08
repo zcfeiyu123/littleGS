@@ -109,6 +109,11 @@ public class UserProxy {
         return allUserMap.get(userName).toTripleTupleString();
     }
 
+    public int getUserAttr1(String userName)
+    {
+        return allUserMap.get(userName).getAtr1();
+    }
+
     //some methods makes testing easy
     public void printAllUser()
     {

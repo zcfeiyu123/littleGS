@@ -32,6 +32,8 @@ public class EventManagerConfig {
     //business part
     private final String configFile = "conf/eventManager.properties";
     private int numOfPeople = 0;
+    private double stepSize = 0;
+    private String numberPattern;
 
     public String load()
     {
@@ -47,6 +49,8 @@ public class EventManagerConfig {
     private void clearParameters()
     {
         numOfPeople = 0;
+        stepSize = 0;
+        numberPattern="";
     }
 
     private String loadConfig()
@@ -55,14 +59,15 @@ public class EventManagerConfig {
             File file = new File(configFile);
             if(!file.exists()||file.isDirectory())
             {
-                System.out.println("[FATAL] config file " + configFile + " does not exist");
-                System.exit(-1);
+                Logger.getInstance().fatal("config file " + configFile + " does not exist");
             }
             InputStream in = new FileInputStream(file);
             Properties props = new Properties();
             props.load(in);
             //print level
             numOfPeople = Integer.parseInt(props.getProperty("numOfPeople", "50"));
+            stepSize = Double.parseDouble(props.getProperty("stepSize","0.0001"));
+            numberPattern = props.getProperty("numberPattern","#.0000");
             in.close();
             Logger.getInstance().info("load event manager config succeed");
             return "load event manager config succeed";
@@ -77,10 +82,22 @@ public class EventManagerConfig {
     private void setDefaultValues()
     {
         numOfPeople = 50;
+        stepSize = 0.0001;
+        numberPattern="#.0000";
     }
 
     public int getNumOfPeople()
     {
         return numOfPeople;
+    }
+
+    public double getStepSize()
+    {
+        return stepSize;
+    }
+
+    public String getNumberPattern()
+    {
+        return numberPattern;
     }
 }
