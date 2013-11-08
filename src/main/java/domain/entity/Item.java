@@ -8,8 +8,14 @@ package domain.entity;
  * To change this template use File | Settings | File Templates.
  */
 public abstract class Item {
-    private int id;
-    private String name;
+    protected int id;
+    protected String name;
+
+    protected Item(int id, String name)
+    {
+        this.id = id;
+        this.name = name;
+    }
 
     public int getId()
     {

@@ -8,9 +8,7 @@ import domain.proxy.UserProxy;
 import domain.proxy.WeaponProxy;
 import utils.NumericalUtils;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * this class is used for handling all kinds of events, breaking them into small units, and call the right proxy
@@ -93,19 +91,27 @@ public class EventManager {
      */
     public String create(String userName)
     {
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user name is null or empty}";
+        }
         if(userProxy.isUserExist(userName))
         {
-            return userProxy.existUserToJsonString(userName);
+            return "{status:success," + userProxy.existUserToJsonString(userName) + "}";
         }
         else
         {
-            return userProxy.createUser(userName);
+            return "{status:success," + userProxy.createUser(userName) + "}";
         }
     }
 
     /*-------------------------------------user refresh operation-----------------------------------------------------*/
     public String refresh(String userName, double longitude, double latitude)
     {
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user is empty or null}";
+        }
         if(!userProxy.isUserExist(userName))
         {
             return "{status:fail,reason:user " + userName + " does not exist}";
@@ -309,6 +315,65 @@ public class EventManager {
             {
                 sbd.append(userProxy.userToPositionString(userNameArray[i])).append(";");
             }
+        }
+        return sbd.deleteCharAt(sbd.length()-1).toString();
+    }
+
+    /*-----------------------------------------get weapon operation---------------------------------------------------*/
+    public String getWeapon(String userName)
+    {
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user name is null or empty}";
+        }
+        if(!userProxy.isUserExist(userName))
+        {
+            return "{status:fail,reason:user" + userName +" does not exist}";
+        }
+        if(!userProxy.isUserAlive(userName))
+        {
+            return "{status:fail,reason:user" + userName +" is already dead}";
+        }
+        if(userWeaponInventoryMap.containsKey(userName))
+        {
+            return "{status:fail,reason:user has got weapon today}";
+        }
+        int numOfWeapon = userProxy.getUserAttr2(userName);
+        ArrayList<Integer> weaponList = getWeaponFromStock(numOfWeapon);
+        String retString = registerWeaponForUser(userName, weaponList);
+        if(retString.length() < 1)
+        {
+            return "{status:fail,reason:no weapon left in stock}";
+        }
+        return "{status:success," + retString +"}";
+    }
+
+    private ArrayList<Integer> getWeaponFromStock(int numOfWeapon)
+    {
+         return weaponProxy.deliverWeapon(numOfWeapon);
+    }
+
+    private String registerWeaponForUser(String userName, ArrayList<Integer> weaponList)
+    {
+        HashMap<Integer, Integer> weaponInventoryMap = new HashMap<Integer, Integer>();
+        for(int i = 0, len = weaponList.size(); i < len; i++)
+        {
+            int weaponId = weaponList.get(i);
+            int inventory = weaponInventoryMap.containsKey(weaponId) ? weaponInventoryMap.get(weaponId) + 1 : 1;
+            weaponInventoryMap.put(weaponId, inventory);
+        }
+        userWeaponInventoryMap.put(userName, weaponInventoryMap);
+        if(weaponInventoryMap.size() < 1)
+        {
+            return "";
+        }
+        StringBuilder sbd = new StringBuilder("weapons:");
+        Iterator<Map.Entry<Integer, Integer>> weaponIterator = weaponInventoryMap.entrySet().iterator();
+        while(weaponIterator.hasNext())
+        {
+            Map.Entry<Integer, Integer> entry = weaponIterator.next();
+            sbd.append("[").append(weaponProxy.getWeaponProfileString(entry.getKey()));
+            sbd.append("\t").append(entry.getValue()).append("]").append(";");
         }
         return sbd.deleteCharAt(sbd.length()-1).toString();
     }

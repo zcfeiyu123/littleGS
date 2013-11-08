@@ -114,6 +114,12 @@ public class UserProxy {
         return allUserMap.get(userName).getAtr1();
     }
 
+    /*-----------------------------------------------user get weapon part----------------------------------------------*/
+    public int getUserAttr2(String userName)
+    {
+        return aliveUserMap.get(userName).getAtr2();
+    }
+
     //some methods makes testing easy
     public void printAllUser()
     {

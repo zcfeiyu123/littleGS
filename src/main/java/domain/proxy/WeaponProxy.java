@@ -1,6 +1,7 @@
 package domain.proxy;
 
 import domain.entity.Weapon;
+import domain.entity.WeaponTypes;
 import domain.log.Logger;
 
 import java.util.*;
@@ -31,14 +32,18 @@ public class WeaponProxy {
     private Random rand = null;
 
     public void init(){
+        //init random
+        rand = new Random();
         //TODO load weapons from database
         weaponHashMap = new HashMap<Integer, Weapon>();
         Logger.getInstance().debug("start init weapon proxy");
         //this map is a tmp place to store inventory information of weapon
-        HashMap<Integer, Integer> weaponInventoryMap = new HashMap<Integer, Integer>();
-
+        //TODO it is a test procedure, we have to modify this
+//        HashMap<Integer, Integer> weaponInventoryMap = new HashMap<Integer, Integer>();
+        HashMap<Integer, Integer> weaponInventoryMap = makeFakeWeapons();
         //update all arrays
         int numOfTotalWeapons = weaponHashMap.size();
+        Logger.getInstance().debug("total " + numOfTotalWeapons + " weapons in hand");
         this.weaponIdArray = new int[numOfTotalWeapons];
         this.weaponInventoryArray = new int[numOfTotalWeapons];
         this.weaponProbArray = new double[numOfTotalWeapons];
@@ -55,9 +60,10 @@ public class WeaponProxy {
             index++;
         }
 
-        for(int i = 0; i < numOfTotalWeapons; i++)
+        weaponProbArray[0] = (double)weaponInventoryArray[0] / totalInventoryOfWeapons;
+        for(int i = 1; i < numOfTotalWeapons; i++)
         {
-            weaponProbArray[i] = (double)weaponInventoryArray[i] / totalInventoryOfWeapons;
+            weaponProbArray[i] = (double)weaponInventoryArray[i] / totalInventoryOfWeapons + weaponProbArray[i-1];
         }
         Logger.getInstance().debug("weapon proxy init finish");
     }
@@ -141,5 +147,32 @@ public class WeaponProxy {
             }
             return index;
         }
+    }
+
+    public String getWeaponProfileString(int weaponId)
+    {
+        return weaponHashMap.get(weaponId).toProfileString();
+    }
+
+    /*-----------------------------------------only for test-----------------------------------------------------------*/
+    //TODO to delete
+    private HashMap<Integer,Integer> makeFakeWeapons()
+    {
+        HashMap<Integer, Integer> tmpMap = new HashMap<Integer, Integer>();
+        int[] ids = {100001,100002};
+        String[] names = {"testWeapon1", "testWeapon2"};
+        WeaponTypes weaponType = WeaponTypes.lineWeapon;
+        int range = 15;
+        int power = 2;
+        for(int i = 0; i < ids.length; i++)
+        {
+            Weapon weapon = new Weapon(ids[i], names[i], weaponType, range, power);
+
+            this.weaponHashMap.put(ids[i], weapon);
+
+            tmpMap.put(ids[i], 100);
+        }
+
+        return tmpMap;
     }
 }

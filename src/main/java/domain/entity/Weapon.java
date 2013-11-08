@@ -13,10 +13,17 @@ import java.util.ArrayList;
  */
 public class Weapon extends Item {
 
-    private int weaponType = 0;//the type of the weapon
+    private WeaponTypes weaponType;//the type of the weapon
     private int power = 0;//how much damage can this weapon cause
     private int range = 0;//fire range of this weapon
-    private int timer = 0;//in how much minutes this weapon will fire
+
+    public Weapon(int weaponId, String weaponName, WeaponTypes weaponType, int range, int power)
+    {
+        super(weaponId, weaponName);
+        this.weaponType = weaponType;
+        this.range = range;
+        this.power = power;
+    }
 
     /**
      * fire to other users
@@ -57,6 +64,21 @@ public class Weapon extends Item {
     {
         EventMessage eventMessage = EventMessage.getInstance(user.getName(), targetUser.getName(), this.getName(), power);
         return eventMessage;
+    }
+
+    /**
+     * the toString methods for deliver weapons
+     * @return
+     */
+    public String toProfileString()
+    {
+        StringBuilder sbd = new StringBuilder();
+        sbd.append(id).append("\t");
+        sbd.append(name).append("\t");
+        sbd.append(weaponType.name()).append("\t");
+        sbd.append(range).append("\t");
+        sbd.append(power);
+        return sbd.toString();
     }
 
 }
