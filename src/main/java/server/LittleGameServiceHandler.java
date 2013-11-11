@@ -3,7 +3,6 @@ package server;
 import domain.entity.UserConfig;
 import domain.log.Logger;
 import domain.manager.EventManager;
-import domain.manager.UserManager;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -91,10 +90,10 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
                 this.getWeaponOperation(ctx, queryStringDecoder, req);
                 break;
             case UserInstantWeapon:
-                this.useInstantWeapon(ctx, queryStringDecoder, req);
+                this.useInstantWeaponOperation(ctx, queryStringDecoder, req);
                 break;
             case UseDelayedWeapon:
-                this.useDelayedWeapon(ctx, queryStringDecoder, req);
+                this.useDelayedWeaponOperation(ctx, queryStringDecoder, req);
                 break;
             case icon:
                 break;
@@ -159,7 +158,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         this.writeResponse(ctx, req, manager.getWeapon(userName));
     }
 
-    private void useInstantWeapon(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void useInstantWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
@@ -171,10 +170,17 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         this.writeResponse(ctx, req, manager.useInstantWeapon(userName, targetUsers, weaponID));
     }
 
-    private void useDelayedWeapon(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void useDelayedWeaponOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
+        //timed weapon, we have to have the exact time the user set, and the position information of the weapon
+        String userName = getParameter("userName", params);
+        String longitude = getParameter("longitude", params);
+        String latitude = getParameter("latitude", params);
+        String weaponID = getParameter("weaponID", params);
+        String launchTime = getParameter("launchTime", params);
+        manager.useDelayedWeapon(userName, longitude, latitude,weaponID,launchTime);
     }
 
     /*-------------------------------------system operation-------------------------------------------------*/

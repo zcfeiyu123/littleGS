@@ -1,6 +1,7 @@
 package server;
 
 import domain.manager.EventManager;
+import domain.timedtask.TimeTaskManager;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -13,10 +14,9 @@ import java.util.Iterator;
 
 /**
  * Created with IntelliJ IDEA.
- * User: zhangcen@youku.com
+ * Author: zhangcen
  * Date: 13-10-31
  * Time: 下午4:16
- * To change this template use File | Settings | File Templates.
  */
 public class LittleGameService {
 
@@ -53,10 +53,20 @@ public class LittleGameService {
         } else {
             port = 9999;
         }
+        //load config
+        loadSystemConfig();
+        //init domain event manager
         initEventsManager();
-
+        //start timed task
+        TimeTaskManager timeTaskManager = new TimeTaskManager();
         //start server
         new LittleGameService(port).run();
+    }
+
+    private static void loadSystemConfig()
+    {
+        LittleGameServiceConfig config = LittleGameServiceConfig.getInstance();
+        config.load();
     }
 
     private static void initEventsManager()

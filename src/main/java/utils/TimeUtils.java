@@ -156,4 +156,12 @@ public class TimeUtils {
         }
         return true;
     }
+
+    public static Date addMinute(Date date, int numberOfMinute)
+    {
+        Calendar startDate = Calendar.getInstance();
+        startDate.setTime(date);
+        startDate.add(Calendar.MINUTE, numberOfMinute);
+        return startDate.getTime();
+    }
 }

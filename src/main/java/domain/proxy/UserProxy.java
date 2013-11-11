@@ -129,4 +129,19 @@ public class UserProxy {
             System.out.println(nameIterator.next() + " in hash map");
         }
     }
+
+    /*-------------------------------------------use weapon parts-----------------------------------------------------*/
+    public void calcDamage(String userName, int damage)
+    {
+        User user = aliveUserMap.containsKey(userName)?aliveUserMap.get(userName):null;
+        if(user != null)
+        {
+            user.reduceHP(damage);
+            if(user.isUserDead())
+            {
+                aliveUserMap.remove(userName);
+            }
+            deadUserMap.put(userName, user);
+        }
+    }
 }

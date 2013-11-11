@@ -170,6 +170,11 @@ public class WeaponProxy {
         return weaponHashMap.get(weaponId).getPower();
     }
 
+    public int getWeaponRange(int weaponId)
+    {
+        return this.weaponHashMap.get(weaponId).getRange();
+    }
+
     /*-----------------------------------------only for test-----------------------------------------------------------*/
     //TODO to delete
     private HashMap<Integer,Integer> makeFakeWeapons()

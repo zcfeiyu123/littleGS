@@ -1,9 +1,5 @@
 package domain.entity;
 
-import domain.manager.UserManager;
-
-import java.util.ArrayList;
-
 /**
  * Created with IntelliJ IDEA.
  * User: Aaron
@@ -26,47 +22,6 @@ public class Weapon extends Item {
     }
 
     /**
-     * fire to other users
-     * @param user user own this weapon
-     * @param targetUsers users will get damage
-     */
-    public void fire(User user, ArrayList<User> targetUsers)
-    {
-        StringBuilder targetUserNames = new StringBuilder();
-        int totalDamage = 0;
-        for(int i = 0, len = targetUsers.size(); i < len; i++)
-        {
-            User targetUser = targetUsers.get(i);
-            EventMessage eventMessage = fireToOneUser(user, targetUser);
-            if(eventMessage != null)//succeed in firing
-            {
-
-                targetUser.calcDamage(power);
-                targetUser.registerEvents(eventMessage);  //register events to this particular user
-
-                if(targetUser.isUserDead())
-                {
-                    UserManager.getInstance().processDeadUser(targetUser);
-                }
-
-                targetUserNames.append(targetUser.getName()).append(",");
-                totalDamage += power;
-            }
-        }
-
-        //register events to main user
-        targetUserNames.deleteCharAt(targetUserNames.length() - 1);
-        EventMessage mainEvent = EventMessage.getInstance(user.getName(), targetUserNames.toString(), this.getName(), totalDamage);
-        user.registerEvents(mainEvent);
-    }
-
-    private EventMessage fireToOneUser(User user, User targetUser)
-    {
-        EventMessage eventMessage = EventMessage.getInstance(user.getName(), targetUser.getName(), this.getName(), power);
-        return eventMessage;
-    }
-
-    /**
      * the toString methods for deliver weapons
      * @return
      */
@@ -86,4 +41,8 @@ public class Weapon extends Item {
         return power;
     }
 
+    public int getRange()
+    {
+        return range;
+    }
 }

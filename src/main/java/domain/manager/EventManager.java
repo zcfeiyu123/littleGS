@@ -1,6 +1,8 @@
 package domain.manager;
 
 import domain.entity.Coordinates;
+import domain.entity.MessageBox;
+import domain.entity.TimedWeaponEntity;
 import domain.entity.User;
 import domain.log.Logger;
 import domain.proxy.CoordinatesProxy;
@@ -45,6 +47,11 @@ public class EventManager {
     //HashMaps
     private HashMap<String, HashMap<Integer, Integer>> userWeaponInventoryMap = null;
     private HashMap<String, HashSet<String>> coordinatesToUserMap = null;
+    private HashMap<String, ArrayList<MessageBox>> userMessageBoxMap = null;
+    //timed weapon events list
+    private int minutesOfOneDay = 1440;
+    private ArrayList<TimedWeaponEntity>[] timedWeaponTaskArrayList;
+    //initialization method
     public void initialization()
     {
         Logger.getInstance().init();
@@ -65,7 +72,13 @@ public class EventManager {
         //all hash maps
         userWeaponInventoryMap = new HashMap<String, HashMap<Integer, Integer>>();
         coordinatesToUserMap = new HashMap<String, HashSet<String>>();
-
+        userMessageBoxMap = new HashMap<String, ArrayList<MessageBox>>();
+        //timed task list
+        this.timedWeaponTaskArrayList = new ArrayList[minutesOfOneDay];
+        for(int i = 0; i < minutesOfOneDay; i++)
+        {
+            timedWeaponTaskArrayList[i] = new ArrayList<TimedWeaponEntity>();
+        }
         Logger.getInstance().info("everything init finish");
         Logger.getInstance().mark();
     }
@@ -133,7 +146,8 @@ public class EventManager {
             userProxy.registerPosition(userName, c);
         }
         //find users nearby
-        String[] userNameArray = findUsersNearby(longitude, latitude, userName);
+        int range = userProxy.getUserAttr1(userName);
+        String[] userNameArray = findUsersNearby(longitude, latitude, userName, range);
         return "{status:success,"+userNameArrayToUserPositionString(userNameArray)+"}";
     }
 
@@ -156,9 +170,8 @@ public class EventManager {
         coordinatesToUserMap.put(positionKey, userNameSet);
     }
 
-    private String[] findUsersNearby(double longitude, double latitude,  String ownUserName)
+    private String[] findUsersNearby(double longitude, double latitude,  String ownUserName, int range)
     {
-        int range = userProxy.getUserAttr1(ownUserName);
         int rangeSquare = range * range;
         String[] userNameArray = new String[numOfPeople];
         int index = 0;
@@ -389,12 +402,17 @@ public class EventManager {
         }
         if(!userProxy.isUserExist(userName))
         {
-            return "{status:fail,reason:user" + userName +" does not exist}";
+            return "{status:fail,reason:user " + userName +" does not exist}";
         }
         if(!userProxy.isUserAlive(userName))
         {
-            return "{status:fail,reason:user" + userName +" is already dead}";
+            return "{status:fail,reason:user " + userName +" is already dead}";
         }
+        if(!userWeaponInventoryMap.containsKey(userName))
+        {
+            return "{status:fail,reason:user " + userName + " has not got weapon}";
+        }
+
         if(weaponID == null || weaponID.length() < 1)
         {
             return "{status:fail,reason:weapon id is null or empty}";
@@ -410,12 +428,19 @@ public class EventManager {
         {
             return "{status:fail,reason:weapon" + weaponID + " does not exist}";
         }
+        if(!userWeaponInventoryMap.get(userName).containsKey(weaponId))
+        {
+            return "{status:fail,reason:user " + userName + " does not possess weapon " + weaponId + " }";
+        }
+
         if(targetUsers == null || targetUsers.length() < 1)
         {
             return "{status:fail,reason:target user is null or empty}";
         }
 
         //after detection, we start to process
+        //we first reduce weapon inventory from user map
+
         int damage = weaponProxy.getDamage(weaponId);
         String weaponName = weaponProxy.getWeaponName(weaponId);
         int totalDamage = 0;
@@ -428,15 +453,147 @@ public class EventManager {
             {
                 targetCount++;
                 totalDamage += damage;
-                registerMessageboxForTargetedUser(userName, targetUserArray[i], weaponName, damage);
+                calcDamageForUser(targetUserArray[i], damage);
+                registerMessageBoxForTargetedUser(userName, targetUserArray[i], weaponName, damage);
             }
         }
         return String.format("{status:success,targetCount:%d,targetDamage:%d}",targetCount,totalDamage);
     }
 
-    private void registerMessageboxForTargetedUser(String userName, String targetUserName, String weaponName, int damage)
+    private void calcDamageForUser(String userName, int damage)
     {
-        //TODO, finish this method
-        String message = String.format("You are attacked by %s with %s, lost %d HP", userName, weaponName, damage);
+        userProxy.calcDamage(userName, damage);
     }
+
+    /**
+     * register message for users being attacked
+     * @param userName who launched the attack
+     * @param targetUserName who is attacked
+     * @param weaponName use what kind of weapon
+     * @param damage how much damage caused
+     */
+    private void registerMessageBoxForTargetedUser(String userName, String targetUserName, String weaponName, int damage)
+    {
+        String message = String.format("[you are attacked by %s using %s, lost %d HP]", userName,weaponName,damage);
+        MessageBox messageBox = new MessageBox(message);
+        ArrayList<MessageBox> messageBoxArrayList = userMessageBoxMap.containsKey(targetUserName)?userMessageBoxMap.get(targetUserName):new ArrayList<MessageBox>();
+        messageBoxArrayList.add(messageBox);
+        userMessageBoxMap.put(targetUserName,messageBoxArrayList);
+    }
+
+    /*-------------------------------------------timed weapon task----------------------------------------------------*/
+    public String useDelayedWeapon(String userName, String longitudeStr, String latitudeStr, String weaponID, String launchTimeStr)
+    {
+        //test parameters
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user name is null or empty}";
+        }
+        if(!userProxy.isUserExist(userName))
+        {
+            return "{status:fail,reason:user " + userName +" does not exist}";
+        }
+        if(!userProxy.isUserAlive(userName))
+        {
+            return "{status:fail,reason:user " + userName +" is already dead}";
+        }
+        if(!userWeaponInventoryMap.containsKey(userName))
+        {
+            return "{status:fail,reason:user " + userName + " has not got weapon}";
+        }
+
+        if(weaponID == null || weaponID.length() < 1)
+        {
+            return "{status:fail,reason:weapon id is null or empty}";
+        }
+        int weaponId;
+        double longitude, latitude;
+        try{
+            weaponId = Integer.parseInt(weaponID);
+            longitude = Double.parseDouble(longitudeStr);
+            latitude = Double.parseDouble(latitudeStr);
+        }catch (Exception e)
+        {
+            return "{status:fail,reason:data conversion fail}";
+        }
+        if(!weaponProxy.isWeaponExist(weaponId))
+        {
+            return "{status:fail,reason:weapon" + weaponID + " does not exist}";
+        }
+        if(!userWeaponInventoryMap.get(userName).containsKey(weaponId))
+        {
+            return "{status:fail,reason:user " + userName + " does not possess weapon " + weaponId + " }";
+        }
+
+        int launchIndex = getLaunchIndex(launchTimeStr);
+        if(launchIndex < 0)
+        {
+            return "{status:fail,reason:launch time is not correctly set}";
+        }
+        return setupTimedWeapon(userName, weaponId, longitude, latitude, launchIndex);
+    }
+
+    private String setupTimedWeapon(String userName, int weaponId, double longitude, double latitude, int index)
+    {
+        TimedWeaponEntity entity = new TimedWeaponEntity(userName, weaponId, longitude, latitude);
+        timedWeaponTaskArrayList[index].add(entity);
+        return "{status:success}";
+    }
+
+    private int getLaunchIndex(String launchTimeStr)
+    {
+        String[] timeStr = StringUtils.splitStr(launchTimeStr,':');
+        if(timeStr.length != 2)
+        {
+            return -1;
+        }
+        try{
+            int index = Integer.parseInt(timeStr[0]) * 60 + Integer.parseInt(timeStr[1]);
+            return index;
+        }catch (Exception e)
+        {
+            return -1;
+        }
+
+    }
+
+    public void runTimedWeaponTask(int index)
+    {
+        ArrayList<TimedWeaponEntity> timedWeaponEntityArrayList = timedWeaponTaskArrayList[index];
+        for(int i = 0, len = timedWeaponEntityArrayList.size(); i < len; i++)
+        {
+            runOneTimedTask(timedWeaponEntityArrayList.get(i));
+        }
+    }
+
+    private void runOneTimedTask(TimedWeaponEntity entity)
+    {
+        int targetCount = 0;
+        int totalDamage = 0;
+        int damage = weaponProxy.getDamage(entity.getWeaponId());
+        String weaponName = weaponProxy.getWeaponName(entity.getWeaponId());
+        String[] usersNearBy = findUsersNearby(entity.getLongitude(), entity.getLatitude(),entity.getUserName(),weaponProxy.getWeaponRange(entity.getWeaponId()));
+        for(int i = 0; i < usersNearBy.length; i++)
+        {
+            String targetUserName = usersNearBy[i];
+            if(userProxy.isUserAlive(targetUserName))
+            {
+                targetCount++;
+                totalDamage += damage;
+                calcDamageForUser(targetUserName, damage);
+                registerMessageBoxForTargetedUser(entity.getUserName(), targetUserName, weaponName, damage);
+            }
+        }
+
+        String message = String.format("[you attack %d users with weapon %s, cause total damage %d]", targetCount, weaponName, totalDamage);
+        registerMessageBoxForOwnUser(message, entity.getUserName());
+    }
+
+   private void registerMessageBoxForOwnUser(String message, String ownUser)
+   {
+       MessageBox messageBox = new MessageBox(message);
+       ArrayList<MessageBox> messageBoxArrayList = userMessageBoxMap.containsKey(ownUser)?userMessageBoxMap.get(ownUser):new ArrayList<MessageBox>();
+       messageBoxArrayList.add(messageBox);
+       userMessageBoxMap.put(ownUser,messageBoxArrayList);
+   }
 }

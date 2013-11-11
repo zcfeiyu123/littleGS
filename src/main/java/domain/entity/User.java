@@ -1,7 +1,5 @@
 package domain.entity;
 
-import domain.manager.UserManager;
-
 import java.util.*;
 
 /**
@@ -31,17 +29,6 @@ public class User {
     private int atr5 = 0;
     private int atr6 = 0;
 
-    /**
-     * weapon related parameters
-     */
-    private HashMap<Integer, Weapon> weaponHashMap = null;
-    private HashMap<Integer, Integer> weaponInventoryMap = null;
-    private boolean weaponAssigned = false;
-    /**
-     * events related parameters
-     */
-    private ArrayList<EventMessage> eventMessageArrayList = null;
-
     private User(String name, UserConfig config)
     {
         this.name = name;
@@ -53,11 +40,6 @@ public class User {
         this.atr4 = config.getDefaultAttr4();
         this.atr5 = config.getDefaultAttr5();
         this.atr6 = config.getDefaultAttr6();
-
-        this.weaponAssigned = false;
-        this.eventMessageArrayList = new ArrayList<EventMessage>();
-        this.weaponHashMap = new HashMap<Integer, Weapon>();
-        this.weaponInventoryMap = new HashMap<Integer, Integer>();
     }
     /*---------------------------------------------create user operation----------------------------------------------*/
     public static User createUser(String name, UserConfig config)
@@ -84,117 +66,6 @@ public class User {
         coordinates = c;
     }
 
-    /**
-     * for this particular user instance, she can not obtain the information of any other users, so the only operation
-     * for her is updating her location status, the left parts of update information is left to UserManager
-     * @param coordinates
-     * @return
-     */
-    public void refresh(Coordinates coordinates)
-    {
-        this.registerCoordinates(coordinates);
-    }
-
-    /*--------------------------------------------get weapon operation------------------------------------------------*/
-
-    public String getWeapon(ArrayList<Integer> weaponIdList)
-    {
-        for(int i = 0 ,len = weaponIdList.size(); i < len; i++)
-        {
-            this.registerWeapon(weaponIdList.get(i));
-        }
-
-        this.weaponAssigned = true;
-
-        return this.weaponToString();
-    }
-
-    private void registerWeapon(Integer weaponId)
-    {
-        int inventory = weaponInventoryMap.containsKey(weaponId) ? weaponInventoryMap.get(weaponId) + 1 : 1;
-        weaponInventoryMap.put(weaponId, inventory);
-    }
-
-    private String weaponToString()
-    {
-        StringBuilder sbd = new StringBuilder();
-        Iterator<Map.Entry<Integer, Integer>> weaponIter = weaponInventoryMap.entrySet().iterator();
-        while(weaponIter.hasNext())
-        {
-            Map.Entry<Integer, Integer> entry = weaponIter.next();
-            sbd.append("[").append(entry.getKey()).append("\t").append(entry.getValue()).append("]");
-        }
-        return sbd.toString();
-    }
-
-    /*--------------------------------------------use weapon operation------------------------------------------------*/
-
-    public String useWeapon(int weaponId, String targetUserNames)
-    {
-        ArrayList<User> targetUsers = UserManager.getInstance().getTargetUsers(targetUserNames);
-        useWeapon(weaponId, targetUsers);
-
-        return "use weapon";
-    }
-
-    public String useWeapon(int weaponId, double longitude, long latitude)
-    {
-        ArrayList<User> targetUsers = UserManager.getInstance().getTargetUsers(longitude, latitude, 0);
-        useWeapon(weaponId, targetUsers);
-
-        return "use weapon";
-    }
-
-    private void useWeapon(int weaponId, ArrayList<User> targetUsers)
-    {
-        if(!weaponHashMap.containsKey(weaponId))
-        {
-            return ;
-        }
-        if(!weaponInventoryMap.containsKey(weaponId) || weaponInventoryMap.get(weaponId) < 1)
-        {
-            return ;
-        }
-
-        Weapon weapon = weaponHashMap.get(weaponId);
-        weapon.fire(this, targetUsers);
-        reduceWeaponInventory(weaponId, 1);
-    }
-
-    private void reduceWeaponInventory(int weaponId, int count)
-    {
-        if(!weaponInventoryMap.containsKey(weaponId) || weaponInventoryMap.get(weaponId) < 1)
-        {
-            return ;
-        }
-        int inventory = weaponInventoryMap.get(weaponId) - count;
-        inventory = inventory < 0 ? 0 : inventory;
-        weaponInventoryMap.put(weaponId, inventory);
-    }
-
-    /*-----------------------------------------------events related---------------------------------------------------*/
-    public void registerEvents(EventMessage eventMessage)
-    {
-        this.eventMessageArrayList.add(eventMessage);
-    }
-
-    public String publishEventMessages()
-    {
-        StringBuilder sbd = new StringBuilder();
-        while(eventMessageArrayList.size() > 0)
-        {
-            sbd.append(eventMessageArrayList.get(0).toString());
-            eventMessageArrayList.remove(0);
-        }
-        return sbd.toString();
-    }
-
-    /*---------------------------------coordinates related methods----------------------------------------------------*/
-    public Coordinates getCoordinates()
-    {
-        return this.coordinates;
-    }
-
     /*----------------------------------getters and setters, status checker-------------------------------------------*/
     public String getName()
     {
@@ -206,19 +77,14 @@ public class User {
         return HP;
     }
 
-    public void calcDamage(int damage)
+    public void reduceHP(int damage)
     {
         HP = damage > HP ? 0 : HP-damage;
     }
 
     public boolean isUserDead()
     {
-        return HP > 0;
-    }
-
-    public boolean isWeaponAssigned()
-    {
-        return this.weaponAssigned;
+        return HP <= 0;
     }
 
     public int getAtr1()
