@@ -157,30 +157,18 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         //the only parameter we need to get a weapon for user is its userName
         String userName = getParameter("userName", params);
         this.writeResponse(ctx, req, manager.getWeapon(userName));
-        if(userName == null || userName.length() < 1)
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:userName is null or empty}");
-            return;
-        }
-        if(!UserManager.getInstance().isUserExist(userName))
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:user " + userName + " does not exist}");
-            return;
-        }
-        if(UserManager.getInstance().hasAssignedWeapon(userName))
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:user has had weapon}");
-            return;
-        }
-        String response = UserManager.getInstance().getWeapon(userName);
-        String retString = "{status:success,result:" + response + "}";
-        this.writeResponse(ctx, req, retString);
     }
 
     private void useInstantWeapon(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
+        //instant weapon needs three kinds of parameters, user, targetUsers, weaponID
+        String userName = getParameter("userName", params);
+        String targetUsers = getParameter("targetUsers", params);
+        String weaponID = getParameter("weaponID", params);
+
+        this.writeResponse(ctx, req, manager.useInstantWeapon(userName, targetUsers, weaponID));
     }
 
     private void useDelayedWeapon(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
@@ -195,10 +183,10 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         SystemOperations systemOperation = SystemOperations.valueOf(operation);
         switch (systemOperation){
             case ReloadEventConfig:
-                this.reloadEventConfig();
+                this.reloadEventConfig(ctx, queryStringDecoder, req);
                 break;
             case ReloadServerConfig:
-                this.reloadServerConfig();
+                this.reloadServerConfig(ctx, queryStringDecoder, req);
                 break;
             case ReloadUserConfig:
                 this.reloadUserConfig(ctx, queryStringDecoder, req);
@@ -208,12 +196,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private void reloadEventConfig()
+    private void reloadEventConfig(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
 
     }
 
-    private void reloadServerConfig()
+    private void reloadServerConfig(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
     {
 
     }

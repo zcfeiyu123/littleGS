@@ -154,6 +154,22 @@ public class WeaponProxy {
         return weaponHashMap.get(weaponId).toProfileString();
     }
 
+    /*---------------------------------------------use weapon parts---------------------------------------------------*/
+    public boolean isWeaponExist(int weaponId)
+    {
+        return this.weaponHashMap.containsKey(weaponId);
+    }
+
+    public String getWeaponName(int weaponId)
+    {
+        return this.weaponHashMap.get(weaponId).getName();
+    }
+
+    public int getDamage(int weaponId)
+    {
+        return weaponHashMap.get(weaponId).getPower();
+    }
+
     /*-----------------------------------------only for test-----------------------------------------------------------*/
     //TODO to delete
     private HashMap<Integer,Integer> makeFakeWeapons()

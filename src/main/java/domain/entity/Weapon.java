@@ -81,4 +81,9 @@ public class Weapon extends Item {
         return sbd.toString();
     }
 
+    public int getPower()
+    {
+        return power;
+    }
+
 }

@@ -7,6 +7,7 @@ import domain.proxy.CoordinatesProxy;
 import domain.proxy.UserProxy;
 import domain.proxy.WeaponProxy;
 import utils.NumericalUtils;
+import utils.StringUtils;
 
 import java.util.*;
 
@@ -376,5 +377,66 @@ public class EventManager {
             sbd.append("\t").append(entry.getValue()).append("]").append(";");
         }
         return sbd.deleteCharAt(sbd.length()-1).toString();
+    }
+
+    /*-----------------------------------------use instant weapon-----------------------------------------------------*/
+    public String useInstantWeapon(String userName, String targetUsers, String weaponID)
+    {
+        //test parameters
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user name is null or empty}";
+        }
+        if(!userProxy.isUserExist(userName))
+        {
+            return "{status:fail,reason:user" + userName +" does not exist}";
+        }
+        if(!userProxy.isUserAlive(userName))
+        {
+            return "{status:fail,reason:user" + userName +" is already dead}";
+        }
+        if(weaponID == null || weaponID.length() < 1)
+        {
+            return "{status:fail,reason:weapon id is null or empty}";
+        }
+        int weaponId;
+        try{
+            weaponId = Integer.parseInt(weaponID);
+        }catch (Exception e)
+        {
+            return "{status:fail,reason:weapon id conversion fail}";
+        }
+        if(!weaponProxy.isWeaponExist(weaponId))
+        {
+            return "{status:fail,reason:weapon" + weaponID + " does not exist}";
+        }
+        if(targetUsers == null || targetUsers.length() < 1)
+        {
+            return "{status:fail,reason:target user is null or empty}";
+        }
+
+        //after detection, we start to process
+        int damage = weaponProxy.getDamage(weaponId);
+        String weaponName = weaponProxy.getWeaponName(weaponId);
+        int totalDamage = 0;
+        int targetCount = 0;
+        //TODO we only calculate damage here, the events procedure should be revised later
+        String[] targetUserArray = StringUtils.splitStr(targetUsers,',');
+        for(int i = 0; i < targetUserArray.length; i++)
+        {
+            if(userProxy.isUserAlive(targetUserArray[i]))
+            {
+                targetCount++;
+                totalDamage += damage;
+                registerMessageboxForTargetedUser(userName, targetUserArray[i], weaponName, damage);
+            }
+        }
+        return String.format("{status:success,targetCount:%d,targetDamage:%d}",targetCount,totalDamage);
+    }
+
+    private void registerMessageboxForTargetedUser(String userName, String targetUserName, String weaponName, int damage)
+    {
+        //TODO, finish this method
+        String message = String.format("You are attacked by %s with %s, lost %d HP", userName, weaponName, damage);
     }
 }
