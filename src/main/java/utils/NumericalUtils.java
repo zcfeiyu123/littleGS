@@ -11,5 +11,24 @@ public class NumericalUtils {
 		df.applyPattern(pattern);
 		return df.format(number);
 	}
-	
+
+    public static double toDouble(String number)
+    {
+        try{
+            return Double.parseDouble(number);
+        }catch (Exception e)
+        {
+            return Double.NaN;
+        }
+    }
+
+    public static int toInteger(String number)
+    {
+        try{
+            return Integer.parseInt(number);
+        }catch (Exception e)
+        {
+            return -1;
+        }
+    }
 }

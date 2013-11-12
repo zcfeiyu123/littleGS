@@ -49,13 +49,12 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             }
             else if(SystemOperations.isSystemOperation(operation))
             {
-                this.processSystemOperation(ctx, queryStringDecoder, req, operation);
+                this.processSystemOperation(ctx, req, operation);
             }
             else //this is an unrecognized operation
             {
                 this.unrecognizedOperation(ctx, req, operation);
             }
-
         }
     }
 
@@ -115,7 +114,7 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     {
         //store all the parameters in map
         Map<String, List<String>> params = queryStringDecoder.parameters();
-        String userName = getParameter("userName", params).trim();
+        String userName = getParameter("userName", params);
         this.writeResponse(ctx, req, manager.create(userName));
     }
 
@@ -129,21 +128,11 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     {
         //store all the parameters in a map
         Map<String, List<String>> params = queryStringDecoder.parameters();
-        double longitude;
-        double latitude;
-        //params detected
-        try{
-            longitude = Double.parseDouble(getParameter("longitude", params));
-            latitude = Double.parseDouble(getParameter("latitude", params));
-        }catch(Exception e)
-        {
-            this.writeResponse(ctx, req, "{status:fail,reason:parameter is wrong}");
-            return ;
-        }
+        //parameters we need are user name, the position information of user
         String userName = getParameter("userName", params).trim();
-        String retString = manager.refresh(userName, longitude, latitude);
-        this.writeResponse(ctx, req, retString);
-        //TODO we still have to deal with event message problems
+        String longitudeStr = getParameter("longitude", params);
+        String latitudeStr = getParameter("latitude", params);
+        this.writeResponse(ctx, req, manager.refresh(userName, longitudeStr, latitudeStr));
     }
 
     /**
@@ -196,38 +185,37 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
     }
 
     /*-------------------------------------system operation-------------------------------------------------*/
-    private void processSystemOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req, String operation)
+    private void processSystemOperation(ChannelHandlerContext ctx,HttpRequest req, String operation)
     {
         SystemOperations systemOperation = SystemOperations.valueOf(operation);
         switch (systemOperation){
             case ReloadEventConfig:
-                this.reloadEventConfig(ctx, queryStringDecoder, req);
+                this.reloadEventConfig(ctx,req);
                 break;
             case ReloadServerConfig:
-                this.reloadServerConfig(ctx, queryStringDecoder, req);
+                this.reloadServerConfig(ctx,req);
                 break;
             case ReloadUserConfig:
-                this.reloadUserConfig(ctx, queryStringDecoder, req);
+                this.reloadUserConfig(ctx,req);
                 break;
             default:
                 break;
         }
     }
 
-    private void reloadEventConfig(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void reloadEventConfig(ChannelHandlerContext ctx,HttpRequest req)
     {
-
+        this.writeResponse(ctx, req, SystemOperationManager.getInstance().reloadEventConfig());
     }
 
-    private void reloadServerConfig(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void reloadServerConfig(ChannelHandlerContext ctx,HttpRequest req)
     {
-
+        this.writeResponse(ctx, req, SystemOperationManager.getInstance().reloadServerConfig());
     }
 
-    private void reloadUserConfig(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    private void reloadUserConfig(ChannelHandlerContext ctx,HttpRequest req)
     {
-        String response = UserConfig.getInstance().reload();
-        writeResponse(ctx, req, response);
+        this.writeResponse(ctx, req, SystemOperationManager.getInstance().reloadUserConfig());
     }
 
     /*----------------------------------------unrecognized operation---------------------------------------*/

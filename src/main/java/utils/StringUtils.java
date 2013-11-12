@@ -75,6 +75,11 @@ public class StringUtils {
         }
     }
 
+    public static boolean isStringNullOrEmpty(String str)
+    {
+        return str == null || str.length() < 1;
+    }
+
     public static void main(String[] args)
     {
        ArrayList<Integer> tmpList = new ArrayList<Integer>();

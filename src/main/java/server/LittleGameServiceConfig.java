@@ -35,12 +35,12 @@ public class LittleGameServiceConfig {
     }
 
     //load and reload config file
-    public boolean load()
+    public String load()
     {
         return loadConfig();
     }
 
-    public boolean reload()
+    public String reload()
     {
         clearParameters();
         return loadConfig();
@@ -50,27 +50,39 @@ public class LittleGameServiceConfig {
      * main method to read config file
      * @return success or fail
      */
-    private boolean loadConfig()
+    private String loadConfig()
     {
         try {
             File file = new File(configFile);
             if(!file.exists()||file.isDirectory())
-                return false;
+            {
+                setDefaultValues();
+                return "{status:fail,reason:file " + configFile + " does not exist,result:use default value instead}";
+            }
             InputStream in = new FileInputStream(file);
             Properties props = new Properties();
             props.load(in);
             //debug level
             debugLevel = Integer.parseInt(props.getProperty("debugLevel","0"));
             //timed task
-            hour = Integer.parseInt(props.getProperty("restartHour","0"));
-            minute = Integer.parseInt(props.getProperty("restartMinute","0"));
+            hour = Integer.parseInt(props.getProperty("restartHour","23"));
+            minute = Integer.parseInt(props.getProperty("restartMinute","59"));
             second =Integer.parseInt( props.getProperty("restartSecond","0"));
             in.close();
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            setDefaultValues();
+            return "{status:fail,result:use default value instead}";
         }
-        return true;
+        return "{status:success,result:server config reload success}";
+    }
+
+    private void setDefaultValues()
+    {
+        this.debugLevel = 0;
+        this.hour = 23;
+        this.minute = 59;
+        this.second = 0;
     }
 
     private void clearParameters()

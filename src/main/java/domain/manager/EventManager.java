@@ -105,50 +105,59 @@ public class EventManager {
      */
     public String create(String userName)
     {
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStats(userName);
+        switch (code)
         {
-            return "{status:fail,reason:user name is null or empty}";
-        }
-        if(userProxy.isUserExist(userName))
-        {
-            return "{status:success," + userProxy.existUserToJsonString(userName) + "}";
-        }
-        else
-        {
-            return "{status:success," + userProxy.createUser(userName) + "}";
+            case UserNameNullOrEmpty:
+                return EventFailMessageBox.getFailMessageWithCode(code);
+            case UserNotExist:
+                return "{status:success," + userProxy.createUser(userName) + "}";
+            default:
+                return "{status:success," + userProxy.existUserToJsonString(userName) + "}";
         }
     }
 
     /*-------------------------------------user refresh operation-----------------------------------------------------*/
-    public String refresh(String userName, double longitude, double latitude)
+    public String refresh(String userName, String longitudeStr, String latitudeStr)
     {
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStats(userName);
+        if(!code.equals(EventResultCode.PASS))
         {
-            return "{status:fail,reason:user is empty or null}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userProxy.isUserExist(userName))
+        //find the corresponding coordinates using position information
+        code = updateCoordinates(longitudeStr,latitudeStr);
+        if(!code.equals(EventResultCode.PASS))
         {
-            return "{status:fail,reason:user " + userName + " does not exist}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
         //remove old position information for this user
         String oldPositionKey = userProxy.getUserPositionKey(userName);
-        String newPositionKey = String.valueOf(longitude) + "_" + String.valueOf(latitude);
+        String newPositionKey = longitudeStr + "_" + latitudeStr;
         cleanPositionInformationForUser(userName, oldPositionKey);
         setNewPositionInformationForUser(userName, newPositionKey);
         //add new information for user instance
-        if(!coordinatesProxy.isCoordinateExist(newPositionKey))
-        {
-            coordinatesProxy.createCoordinates(longitude,latitude);
-        }
         Coordinates c = coordinatesProxy.getCoordinatesByName(newPositionKey);
         if(c != null)
         {
             userProxy.registerPosition(userName, c);
         }
+        else
+        {
+            code = EventResultCode.CoordinatesNotExist;
+            return EventFailMessageBox.getFailMessageWithCode(code);
+        }
         //find users nearby
         int range = userProxy.getUserAttr1(userName);
-        String[] userNameArray = findUsersNearby(longitude, latitude, userName, range);
-        return "{status:success,"+userNameArrayToUserPositionString(userNameArray)+"}";
+        LinkedHashSet<String> userNameSet = findUsersNearby(c.getLongitude(), c.getLatitude(), userName, range, numOfPeople);
+        if(userNameSet.size() > 1)//more than user himself
+        {
+            return "{status:success,"+userNameListToString(userNameSet)+"}";
+        }
+        else
+        {
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.NoUserAround);
+        }
     }
 
     private void cleanPositionInformationForUser(String userName, String oldPositionKey)
@@ -166,169 +175,76 @@ public class EventManager {
     {
         HashSet<String> userNameSet = coordinatesToUserMap.containsKey(positionKey) ? coordinatesToUserMap.get(positionKey) : new HashSet<String>();
         userNameSet.add(userName);
-//        Logger.getInstance().debug("positionKey = " + positionKey + " and we are in set new position for user " + userName);
         coordinatesToUserMap.put(positionKey, userNameSet);
     }
 
-    private String[] findUsersNearby(double longitude, double latitude,  String ownUserName, int range)
+    private LinkedHashSet<String> findUsersNearby(double longitude, double latitude,  String ownUserName, int range, int numOfPeople)
     {
-        int rangeSquare = range * range;
-        String[] userNameArray = new String[numOfPeople];
-        int index = 0;
-        String positionKey;
-        //TODO to optimize it in the future
-        //process the same location
-        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
-        Logger.getInstance().debug("positionKey = " + positionKey);
-        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-        if(index >= numOfPeople)
+        LinkedHashSet<String> neighborSet = new LinkedHashSet<String>();
+        neighborSet.add(ownUserName);
+        int sqrtRange = (int)Math.sqrt(range + 0.0);
+        int longitudeOffset = 0;
+        int latitudeOffset = 0;
+        int size = 1;
+        while(longitudeOffset < sqrtRange && latitudeOffset < sqrtRange && size < numOfPeople)
         {
-            return userNameArray;
-        }
-        //start iteration
-        //first we deal with the problem that one parameter = 0
-        for(int k = 1; k < range; k++)
-        {
-            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * k);
-            Logger.getInstance().debug("positionKey = " + positionKey);
-            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-            if(index >= numOfPeople)
+            size = fillNeighborSet(numOfPeople,longitude,latitude,longitudeOffset,latitudeOffset,neighborSet);
+            size = fillNeighborSet(numOfPeople,longitude,latitude,0-longitudeOffset,latitudeOffset,neighborSet);
+            size = fillNeighborSet(numOfPeople,longitude,latitude,longitudeOffset,0-latitudeOffset,neighborSet);
+            size = fillNeighborSet(numOfPeople,longitude,latitude,0-longitudeOffset,0-latitudeOffset,neighborSet);
+            if(longitudeOffset != latitudeOffset)//swap longitude and latitude
             {
-                return userNameArray;
+                size = fillNeighborSet(numOfPeople,longitude,latitude,latitudeOffset,longitudeOffset,neighborSet);
+                size = fillNeighborSet(numOfPeople,longitude,latitude,0-latitudeOffset,longitudeOffset,neighborSet);
+                size = fillNeighborSet(numOfPeople,longitude,latitude,latitudeOffset,0-longitudeOffset,neighborSet);
+                size = fillNeighborSet(numOfPeople,longitude,latitude,0-latitudeOffset,0-longitudeOffset,neighborSet);
             }
-            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * k);
-            Logger.getInstance().debug("positionKey = " + positionKey);
-            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-            if(index >= numOfPeople)
+            if(longitudeOffset < sqrtRange)
             {
-                return userNameArray;
+                longitudeOffset++;
             }
-            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * k)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
-            Logger.getInstance().debug("positionKey = " + positionKey);
-            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-            if(index >= numOfPeople)
+            if(longitudeOffset > sqrtRange)
             {
-                return userNameArray;
-            }
-            positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * k)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude);
-            Logger.getInstance().debug("positionKey = " + positionKey);
-            index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-            if(index >= numOfPeople)
-            {
-                return userNameArray;
+                latitudeOffset++;
+                longitudeOffset = latitudeOffset;
             }
         }
-        // no parameter = 0
-        for(int i = 1; i < range; i++)
-        {
-            for(int j = i; j < range ; j++)
-            {
-                if(i*i + j*j < rangeSquare) // a valid position
-                {
-                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * j);
-                    Logger.getInstance().debug("positionKey = " + positionKey);
-                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                    if(index >= numOfPeople)
-                    {
-                        return userNameArray;
-                    }
-                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * j);
-                    Logger.getInstance().debug("positionKey = " + positionKey);
-                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                    if(index >= numOfPeople)
-                    {
-                        return userNameArray;
-                    }
-                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * j);
-                    Logger.getInstance().debug("positionKey = " + positionKey);
-                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                    if(index >= numOfPeople)
-                    {
-                        return userNameArray;
-                    }
-                    positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * i)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * j);
-                    Logger.getInstance().debug("positionKey = " + positionKey);
-                    index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                    if(index >= numOfPeople)
-                    {
-                        return userNameArray;
-                    }
-                    if(i != j)
-                    {
-                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * i);
-                        Logger.getInstance().debug("positionKey = " + positionKey);
-                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                        if(index >= numOfPeople)
-                        {
-                            return userNameArray;
-                        }
-                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * i);
-                        Logger.getInstance().debug("positionKey = " + positionKey);
-                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                        if(index >= numOfPeople)
-                        {
-                            return userNameArray;
-                        }
-                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * i);
-                        Logger.getInstance().debug("positionKey = " + positionKey);
-                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                        if(index >= numOfPeople)
-                        {
-                            return userNameArray;
-                        }
-                        positionKey = NumericalUtils.formatDecimal(numberPattern, longitude - stepSize * j)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude - stepSize * i);
-                        Logger.getInstance().debug("positionKey = " + positionKey);
-                        index = fillUserNameArrayByPositionKey(userNameArray, positionKey, index, ownUserName);
-                        if(index >= numOfPeople)
-                        {
-                            return userNameArray;
-                        }
-                    }
-                }
-            }
-        }
-        return userNameArray;
+        return neighborSet;
     }
 
-    private int fillUserNameArrayByPositionKey(String[] userNameArray, String positionKey, int index, String ownUserName)
+    private int fillNeighborSet(int numOfNeighborLimit, double longitude, double latitude, int longitudeOffset, int latitudeOffset, LinkedHashSet<String> neighborSet)
     {
-        if(index >= numOfPeople)
-        {
-            return index;
-        }
+        String positionKey = NumericalUtils.formatDecimal(numberPattern, longitude + stepSize * longitudeOffset)+ "_" + NumericalUtils.formatDecimal(numberPattern, latitude + stepSize * latitudeOffset);
+        return fillNeighborSetByPositionKey(numOfNeighborLimit,positionKey,neighborSet);
+    }
+
+    private int fillNeighborSetByPositionKey(int numOfNeighborLimit, String positionKey, LinkedHashSet<String> neighborSet)
+    {
+        int size = neighborSet.size();
         Iterator<String> userNameIterator = coordinatesToUserMap.containsKey(positionKey) ? coordinatesToUserMap.get(positionKey).iterator() : null;
         if(userNameIterator != null)
         {
-            while(userNameIterator.hasNext())
+            while(userNameIterator.hasNext() && size < numOfNeighborLimit)
             {
                 String userName = userNameIterator.next();
-                if(userProxy.isUserAlive(userName) && !userName.equals(ownUserName))
+                if(userProxy.isUserAlive(userName))
                 {
-                    userNameArray[index] = userName;
-                    index++;
-                    if(index >= numOfPeople)
-                    {
-                        return index;
-                    }
+                    neighborSet.add(userName);
+                    size++;
                 }
             }
         }
-        return index;
+        return size;
     }
 
-    private String userNameArrayToUserPositionString(String[] userNameArray)
+    private String userNameListToString(LinkedHashSet<String> userNameLinkedHashSet)
     {
-        if(userNameArray[0] == null)//could not find any user around
-        {
-            return "";
-        }
         StringBuilder sbd = new StringBuilder("users:");
-        for(int i = 0, length = userNameArray.length; i < length; i++)
+        Iterator<String> userIterator = userNameLinkedHashSet.iterator();
+        userIterator.next();//the first one is the user himself
+        while(userIterator.hasNext())
         {
-            if(userNameArray[i] != null)
-            {
-                sbd.append(userProxy.userToPositionString(userNameArray[i])).append(";");
-            }
+            sbd.append(userProxy.userToPositionString(userIterator.next())).append(";");
         }
         return sbd.deleteCharAt(sbd.length()-1).toString();
     }
@@ -336,30 +252,22 @@ public class EventManager {
     /*-----------------------------------------get weapon operation---------------------------------------------------*/
     public String getWeapon(String userName)
     {
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStats(userName);
+        if(!code.equals(EventResultCode.PASS))
         {
-            return "{status:fail,reason:user name is null or empty}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userProxy.isUserExist(userName))
+        if(isUserAssignedWeapon(userName))
         {
-            return "{status:fail,reason:user" + userName +" does not exist}";
-        }
-        if(!userProxy.isUserAlive(userName))
-        {
-            return "{status:fail,reason:user" + userName +" is already dead}";
-        }
-        if(userWeaponInventoryMap.containsKey(userName))
-        {
-            return "{status:fail,reason:user has got weapon today}";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserAssignedWeapon);
         }
         int numOfWeapon = userProxy.getUserAttr2(userName);
         ArrayList<Integer> weaponList = getWeaponFromStock(numOfWeapon);
-        String retString = registerWeaponForUser(userName, weaponList);
-        if(retString.length() < 1)
+        if(weaponList.size() < 1)
         {
-            return "{status:fail,reason:no weapon left in stock}";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.NoWeaponLeft);
         }
-        return "{status:success," + retString +"}";
+        return "{status:success," + registerWeaponForUser(userName, weaponList) + "}";
     }
 
     private ArrayList<Integer> getWeaponFromStock(int numOfWeapon)
@@ -393,44 +301,27 @@ public class EventManager {
     }
 
     /*-----------------------------------------use instant weapon-----------------------------------------------------*/
-    public String useInstantWeapon(String userName, String targetUsers, String weaponID)
+    public String useInstantWeapon(String userName, String targetUsers, String weaponIDStr)
     {
         //test parameters
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStats(userName);
+        if(!code.equals(EventResultCode.PASS))
         {
-            return "{status:fail,reason:user name is null or empty}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userProxy.isUserExist(userName))
+        if(!isUserAssignedWeapon(userName))
         {
-            return "{status:fail,reason:user " + userName +" does not exist}";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotAssignedWeapon);
         }
-        if(!userProxy.isUserAlive(userName))
+        code = checkWeaponStatus(weaponIDStr);
+        if(!code.equals(EventResultCode.PASS))
         {
-            return "{status:fail,reason:user " + userName +" is already dead}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userWeaponInventoryMap.containsKey(userName))
-        {
-            return "{status:fail,reason:user " + userName + " has not got weapon}";
-        }
-
-        if(weaponID == null || weaponID.length() < 1)
-        {
-            return "{status:fail,reason:weapon id is null or empty}";
-        }
-        int weaponId;
-        try{
-            weaponId = Integer.parseInt(weaponID);
-        }catch (Exception e)
-        {
-            return "{status:fail,reason:weapon id conversion fail}";
-        }
-        if(!weaponProxy.isWeaponExist(weaponId))
-        {
-            return "{status:fail,reason:weapon" + weaponID + " does not exist}";
-        }
+        int weaponId = Integer.parseInt(weaponIDStr);
         if(!userWeaponInventoryMap.get(userName).containsKey(weaponId))
         {
-            return "{status:fail,reason:user " + userName + " does not possess weapon " + weaponId + " }";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotPossessWeapon);
         }
 
         if(targetUsers == null || targetUsers.length() < 1)
@@ -572,16 +463,21 @@ public class EventManager {
         int totalDamage = 0;
         int damage = weaponProxy.getDamage(entity.getWeaponId());
         String weaponName = weaponProxy.getWeaponName(entity.getWeaponId());
-        String[] usersNearBy = findUsersNearby(entity.getLongitude(), entity.getLatitude(),entity.getUserName(),weaponProxy.getWeaponRange(entity.getWeaponId()));
-        for(int i = 0; i < usersNearBy.length; i++)
+        LinkedHashSet<String> userNameSet = findUsersNearby(entity.getLongitude(),entity.getLatitude(),entity.getUserName(),weaponProxy.getWeaponRange(entity.getWeaponId()), numOfPeople);
+        if(userNameSet.size() > 1)//more than user himself
         {
-            String targetUserName = usersNearBy[i];
-            if(userProxy.isUserAlive(targetUserName))
+            Iterator<String> userIterator = userNameSet.iterator();
+            userIterator.next();
+            while(userIterator.hasNext())
             {
-                targetCount++;
-                totalDamage += damage;
-                calcDamageForUser(targetUserName, damage);
-                registerMessageBoxForTargetedUser(entity.getUserName(), targetUserName, weaponName, damage);
+                String targetUserName = userIterator.next();
+                if(userProxy.isUserAlive(targetUserName))
+                {
+                    targetCount++;
+                    totalDamage += damage;
+                    calcDamageForUser(targetUserName, damage);
+                    registerMessageBoxForTargetedUser(entity.getUserName(), targetUserName, weaponName, damage);
+                }
             }
         }
 
@@ -660,4 +556,69 @@ public class EventManager {
             }
         }
     }
+
+    /*---------------------------------------------utility functions--------------------------------------------------*/
+    private EventResultCode checkUserStats(String userName)
+    {
+        if(StringUtils.isStringNullOrEmpty(userName))
+        {
+            return EventResultCode.UserNameNullOrEmpty;
+        }
+        else if(!userProxy.isUserExist(userName))
+        {
+            return EventResultCode.UserNotExist;
+        }
+        else if(!userProxy.isUserAlive(userName))
+        {
+            return EventResultCode.UserNotAlive;
+        }
+        return EventResultCode.PASS;
+    }
+
+    private boolean isUserAssignedWeapon(String userName)
+    {
+        return userWeaponInventoryMap.containsKey(userName);
+    }
+
+    private EventResultCode updateCoordinates(String longitudeStr, String latitudeStr)
+    {
+        //if position exist, we return pass
+        String positionKey = longitudeStr + "_" + latitudeStr;
+        if(coordinatesProxy.isCoordinateExist(positionKey))
+        {
+            return EventResultCode.PASS;
+        }
+        //if this position does not exist, we need to produce a new one
+        double longitude = NumericalUtils.toDouble(longitudeStr);
+        if(Double.isNaN(longitude))
+        {
+            return EventResultCode.LongitudeFormatWrong;
+        }
+        double latitude = NumericalUtils.toDouble(latitudeStr);
+        if(Double.isNaN(latitude))
+        {
+            return EventResultCode.LatitudeFormatWrong;
+        }
+        coordinatesProxy.createCoordinates(longitude,latitude);
+        return EventResultCode.PASS;
+    }
+
+    private EventResultCode checkWeaponStatus(String weaponIdStr)
+    {
+        if(StringUtils.isStringNullOrEmpty(weaponIdStr))
+        {
+            return EventResultCode.WeaponIdFormatWrong;
+        }
+        int weaponId = NumericalUtils.toInteger(weaponIdStr);
+        if(weaponId < 0)
+        {
+            return EventResultCode.WeaponIdFormatWrong;
+        }
+        else if(!weaponProxy.isWeaponExist(weaponId))
+        {
+            return EventResultCode.WeaponNotExist;
+        }
+        return EventResultCode.PASS;
+    }
+
 }
