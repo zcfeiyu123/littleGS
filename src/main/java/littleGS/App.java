@@ -14,10 +14,12 @@ public class App
 {
     public static void main( String[] args )
     {
-        LinkedHashSet<String> set = new LinkedHashSet<String>();
-        System.out.println(set.size());
-        addToSet(set);
-        System.out.println(set.size());
+        EventResultCode code = EventResultCode.PASS;
+        if(code == EventResultCode.PASS)
+        {
+            System.out.println("true");
+        }
+        System.out.println(code==EventResultCode.CoordinatesNotExist);
     }
 
     private static void addToSet(LinkedHashSet<String> set)

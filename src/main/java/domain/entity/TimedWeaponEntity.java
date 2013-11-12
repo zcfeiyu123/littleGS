@@ -9,15 +9,13 @@ package domain.entity;
 public class TimedWeaponEntity {
     private String userName = null;
     private int weaponId;
-    private double longitude;
-    private double latitude;
+    private Coordinates coordinates;
 
-    public TimedWeaponEntity(String userName, int weaponId, double longitude, double latitude)
+    public TimedWeaponEntity(String userName, int weaponId, Coordinates coordinates)
     {
         this.userName = userName;
         this.weaponId = weaponId;
-        this.longitude = longitude;
-        this.latitude = latitude;
+        this.coordinates = coordinates;
     }
 
     public String getUserName() {
@@ -29,10 +27,10 @@ public class TimedWeaponEntity {
     }
 
     public double getLongitude() {
-        return longitude;
+        return coordinates.getLongitude();
     }
 
     public double getLatitude() {
-        return latitude;
+        return coordinates.getLatitude();
     }
 }

@@ -15,11 +15,14 @@ public enum EventResultCode {
     UserNotAssignedWeapon,
     UserNotPossessWeapon,
     NoUserAround,
+    TargetUserNullOrEmpty,
     WeaponIdFormatWrong,
     WeaponNotExist,
     NoWeaponLeft,
     LongitudeFormatWrong,
     LatitudeFormatWrong,
     CoordinatesNotExist,
+    LaunchTimeFormatWrong,
+    NoUnpublishedMessage,
     UnKnownError;
 }

@@ -105,7 +105,7 @@ public class EventManager {
      */
     public String create(String userName)
     {
-        EventResultCode code = checkUserStats(userName);
+        EventResultCode code = checkUserStatus(userName);
         switch (code)
         {
             case UserNameNullOrEmpty:
@@ -120,14 +120,14 @@ public class EventManager {
     /*-------------------------------------user refresh operation-----------------------------------------------------*/
     public String refresh(String userName, String longitudeStr, String latitudeStr)
     {
-        EventResultCode code = checkUserStats(userName);
-        if(!code.equals(EventResultCode.PASS))
+        EventResultCode code = checkUserStatus(userName);
+        if(code != EventResultCode.PASS)
         {
             return EventFailMessageBox.getFailMessageWithCode(code);
         }
         //find the corresponding coordinates using position information
         code = updateCoordinates(longitudeStr,latitudeStr);
-        if(!code.equals(EventResultCode.PASS))
+        if(code != EventResultCode.PASS)
         {
             return EventFailMessageBox.getFailMessageWithCode(code);
         }
@@ -252,8 +252,8 @@ public class EventManager {
     /*-----------------------------------------get weapon operation---------------------------------------------------*/
     public String getWeapon(String userName)
     {
-        EventResultCode code = checkUserStats(userName);
-        if(!code.equals(EventResultCode.PASS))
+        EventResultCode code = checkUserStatus(userName);
+        if(code != EventResultCode.PASS)
         {
             return EventFailMessageBox.getFailMessageWithCode(code);
         }
@@ -304,8 +304,8 @@ public class EventManager {
     public String useInstantWeapon(String userName, String targetUsers, String weaponIDStr)
     {
         //test parameters
-        EventResultCode code = checkUserStats(userName);
-        if(!code.equals(EventResultCode.PASS))
+        EventResultCode code = checkUserStatus(userName);
+        if(code != EventResultCode.PASS)
         {
             return EventFailMessageBox.getFailMessageWithCode(code);
         }
@@ -314,7 +314,7 @@ public class EventManager {
             return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotAssignedWeapon);
         }
         code = checkWeaponStatus(weaponIDStr);
-        if(!code.equals(EventResultCode.PASS))
+        if(code != EventResultCode.PASS)
         {
             return EventFailMessageBox.getFailMessageWithCode(code);
         }
@@ -323,10 +323,10 @@ public class EventManager {
         {
             return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotPossessWeapon);
         }
-
-        if(targetUsers == null || targetUsers.length() < 1)
+        code = checkTargetUserStatus(targetUsers);
+        if(code != EventResultCode.PASS)
         {
-            return "{status:fail,reason:target user is null or empty}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
 
         //after detection, we start to process
@@ -373,60 +373,44 @@ public class EventManager {
     }
 
     /*-------------------------------------------timed weapon task----------------------------------------------------*/
-    public String useDelayedWeapon(String userName, String longitudeStr, String latitudeStr, String weaponID, String launchTimeStr)
+    public String useDelayedWeapon(String userName, String longitudeStr, String latitudeStr, String weaponIDStr, String launchTimeStr)
     {
-        //test parameters
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStatus(userName);
+        if(code != EventResultCode.PASS)
         {
-            return "{status:fail,reason:user name is null or empty}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userProxy.isUserExist(userName))
+        if(!isUserAssignedWeapon(userName))
         {
-            return "{status:fail,reason:user " + userName +" does not exist}";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotAssignedWeapon);
         }
-        if(!userProxy.isUserAlive(userName))
+        code = checkWeaponStatus(weaponIDStr);
+        if(code != EventResultCode.PASS)
         {
-            return "{status:fail,reason:user " + userName +" is already dead}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
-        if(!userWeaponInventoryMap.containsKey(userName))
-        {
-            return "{status:fail,reason:user " + userName + " has not got weapon}";
-        }
-
-        if(weaponID == null || weaponID.length() < 1)
-        {
-            return "{status:fail,reason:weapon id is null or empty}";
-        }
-        int weaponId;
-        double longitude, latitude;
-        try{
-            weaponId = Integer.parseInt(weaponID);
-            longitude = Double.parseDouble(longitudeStr);
-            latitude = Double.parseDouble(latitudeStr);
-        }catch (Exception e)
-        {
-            return "{status:fail,reason:data conversion fail}";
-        }
-        if(!weaponProxy.isWeaponExist(weaponId))
-        {
-            return "{status:fail,reason:weapon" + weaponID + " does not exist}";
-        }
+        int weaponId = Integer.parseInt(weaponIDStr);
         if(!userWeaponInventoryMap.get(userName).containsKey(weaponId))
         {
-            return "{status:fail,reason:user " + userName + " does not possess weapon " + weaponId + " }";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.UserNotPossessWeapon);
         }
-
+        code = updateCoordinates(longitudeStr, latitudeStr);
+        if(code != EventResultCode.PASS)
+        {
+            return EventFailMessageBox.getFailMessageWithCode(code);
+        }
         int launchIndex = getLaunchIndex(launchTimeStr);
         if(launchIndex < 0)
         {
-            return "{status:fail,reason:launch time is not correctly set}";
+            return EventFailMessageBox.getFailMessageWithCode(EventResultCode.LaunchTimeFormatWrong);
         }
-        return setupTimedWeapon(userName, weaponId, longitude, latitude, launchIndex);
+        Coordinates coordinates = coordinatesProxy.getCoordinatesByName(longitudeStr+"_"+latitudeStr);
+        return setupTimedWeapon(userName, weaponId, coordinates, launchIndex);
     }
 
-    private String setupTimedWeapon(String userName, int weaponId, double longitude, double latitude, int index)
+    private String setupTimedWeapon(String userName, int weaponId,Coordinates coordinates, int index)
     {
-        TimedWeaponEntity entity = new TimedWeaponEntity(userName, weaponId, longitude, latitude);
+        TimedWeaponEntity entity = new TimedWeaponEntity(userName, weaponId,coordinates);
         timedWeaponTaskArrayList[index].add(entity);
         return "{status:success}";
     }
@@ -496,22 +480,22 @@ public class EventManager {
    /*-----------------------------------------publish events----------------------------------------------------------*/
     public String publishMessages(String userName)
     {
-        if(userName == null || userName.length() < 1)
+        EventResultCode code = checkUserStatus(userName);
+        if(code == EventResultCode.PASS || code == EventResultCode.UserNotAlive)
         {
-            return "{status:fail,reason:user name is null or empty}";
-        }
-        if(userProxy.isUserExist(userName))
-        {
-            return "{status:fail,reason:user " + userName + " does not exist}";
-        }
-        String messages = getMessageForUser(userName);
-        if(messages.length() > 1)
-        {
-            return "{status:success," + messages + "}";
+            String messages = getMessageForUser(userName);
+            if(messages.length() > 1)
+            {
+                return EventFailMessageBox.getFailMessageWithCode(EventResultCode.NoUnpublishedMessage);
+            }
+            else
+            {
+                return "{status:success," + messages + "}";
+            }
         }
         else
         {
-            return "{status:fail,reason:no unpublished messages}";
+            return EventFailMessageBox.getFailMessageWithCode(code);
         }
     }
 
@@ -558,7 +542,7 @@ public class EventManager {
     }
 
     /*---------------------------------------------utility functions--------------------------------------------------*/
-    private EventResultCode checkUserStats(String userName)
+    private EventResultCode checkUserStatus(String userName)
     {
         if(StringUtils.isStringNullOrEmpty(userName))
         {
@@ -617,6 +601,15 @@ public class EventManager {
         else if(!weaponProxy.isWeaponExist(weaponId))
         {
             return EventResultCode.WeaponNotExist;
+        }
+        return EventResultCode.PASS;
+    }
+
+    private EventResultCode checkTargetUserStatus(String targetUserString)
+    {
+        if(StringUtils.isStringNullOrEmpty(targetUserString))
+        {
+            return EventResultCode.TargetUserNullOrEmpty;
         }
         return EventResultCode.PASS;
     }
