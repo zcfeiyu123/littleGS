@@ -7,7 +7,7 @@ package server;
  * Time: 下午5:39
  */
 public enum UserOperations {
-    Create,Refresh,GetWeapon,UserInstantWeapon,UseDelayedWeapon,icon;
+    Create,Refresh,GetWeapon,UserInstantWeapon,UseDelayedWeapon,PublishEvents,icon;
 
     public static boolean isUserOperation(String operation)
     {

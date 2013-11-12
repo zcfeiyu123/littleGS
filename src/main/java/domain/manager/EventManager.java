@@ -596,4 +596,68 @@ public class EventManager {
        messageBoxArrayList.add(messageBox);
        userMessageBoxMap.put(ownUser,messageBoxArrayList);
    }
+
+   /*-----------------------------------------publish events----------------------------------------------------------*/
+    public String publishMessages(String userName)
+    {
+        if(userName == null || userName.length() < 1)
+        {
+            return "{status:fail,reason:user name is null or empty}";
+        }
+        if(userProxy.isUserExist(userName))
+        {
+            return "{status:fail,reason:user " + userName + " does not exist}";
+        }
+        String messages = getMessageForUser(userName);
+        if(messages.length() > 1)
+        {
+            return "{status:success," + messages + "}";
+        }
+        else
+        {
+            return "{status:fail,reason:no unpublished messages}";
+        }
+    }
+
+    private String getMessageForUser(String userName)
+    {
+        if(!this.userMessageBoxMap.containsKey(userName))
+        {
+            return "";
+        }
+        ArrayList<MessageBox> messageBoxArrayList = userMessageBoxMap.get(userName);
+        StringBuilder sbd = new StringBuilder();
+        for(int i = 0, len = messageBoxArrayList.size(); i < len; i++)
+        {
+            if(!messageBoxArrayList.get(i).isPublished())
+            {
+                sbd.append(messageBoxArrayList.get(i).publish()).append(";");
+            }
+        }
+        //clean message
+        if(userProxy.isUserAlive(userName))
+        {
+            cleanMessages(messageBoxArrayList);
+        }
+        else
+        {
+            //this user will not get any new message
+            userMessageBoxMap.remove(userName);
+        }
+        if(sbd.length() > 1)
+        {
+            return "messages:" + sbd.deleteCharAt(sbd.length()-1).toString();
+        }
+        return "";
+    }
+    private void cleanMessages(ArrayList<MessageBox> messageBoxArrayList)
+    {
+        for(int len = messageBoxArrayList.size(), i = len-1; i > -1; i--)
+        {
+            if(messageBoxArrayList.get(i).isPublished())
+            {
+                messageBoxArrayList.remove(i);
+            }
+        }
+    }
 }

@@ -95,6 +95,9 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
             case UseDelayedWeapon:
                 this.useDelayedWeaponOperation(ctx, queryStringDecoder, req);
                 break;
+            case PublishEvents:
+                this.publishEventsOperation(ctx, queryStringDecoder, req);
+                break;
             case icon:
                 break;
             default:
@@ -180,7 +183,16 @@ public class LittleGameServiceHandler extends ChannelInboundHandlerAdapter {
         String latitude = getParameter("latitude", params);
         String weaponID = getParameter("weaponID", params);
         String launchTime = getParameter("launchTime", params);
-        manager.useDelayedWeapon(userName, longitude, latitude,weaponID,launchTime);
+        this.writeResponse(ctx, req, manager.useDelayedWeapon(userName, longitude, latitude,weaponID,launchTime));
+    }
+
+    private void publishEventsOperation(ChannelHandlerContext ctx, QueryStringDecoder queryStringDecoder, HttpRequest req)
+    {
+        //store all the parameters in a map
+        Map<String, List<String>> params = queryStringDecoder.parameters();
+        //only information we need is userName
+        String userName = getParameter("userName",params);
+        this.writeResponse(ctx, req, manager.publishMessages(userName));
     }
 
     /*-------------------------------------system operation-------------------------------------------------*/
